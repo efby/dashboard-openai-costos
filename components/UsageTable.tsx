@@ -15,6 +15,7 @@ export default function UsageTable({ records }: UsageTableProps) {
   const [filterModel, setFilterModel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Obtener modelos únicos para el filtro
@@ -184,6 +185,9 @@ export default function UsageTable({ records }: UsageTableProps) {
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <span className="sr-only">Expandir</span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Fecha
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -206,40 +210,126 @@ export default function UsageTable({ records }: UsageTableProps) {
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="bg-white dark:bg-gray-800">
             {paginatedRecords.map((record) => {
               const cost = calculateCost(
                 record.modelo_ai,
                 record.usage.input_tokens,
                 record.usage.output_tokens
               );
+              const isExpanded = expandedRow === record.id;
+              
+              // Convertir a string si es objeto
+              const inputPromtStr = typeof record.input_promt === 'string' 
+                ? record.input_promt 
+                : record.input_promt 
+                  ? JSON.stringify(record.input_promt, null, 2)
+                  : '';
+              
+              const respuestaBusquedaStr = typeof record.respuesta_busqueda === 'string'
+                ? record.respuesta_busqueda
+                : record.respuesta_busqueda
+                  ? JSON.stringify(record.respuesta_busqueda, null, 2)
+                  : '';
+              
+              const hasDetails = inputPromtStr || respuestaBusquedaStr;
 
               return (
-                <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {format(parseISO(record.timestamp), "dd/MM/yyyy HH:mm", { locale: es })}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
-                    {record.nombre_candidato || record.nombre}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
-                      {record.modelo_ai}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {record.tipo_busqueda}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
-                    {record.usage.input_tokens.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
-                    {record.usage.output_tokens.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-gray-300">
-                    {formatCost(cost.totalCost)}
-                  </td>
-                </tr>
+                <>
+                  <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
+                    {/* Botón expandir */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {hasDetails && (
+                        <button
+                          onClick={() => setExpandedRow(isExpanded ? null : record.id)}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-transform"
+                          title="Ver detalles de prompt y respuesta"
+                        >
+                          <svg
+                            className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                      {format(parseISO(record.timestamp), "dd/MM/yyyy HH:mm", { locale: es })}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
+                      {record.nombre_candidato || record.nombre}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
+                        {record.modelo_ai}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                      {record.tipo_busqueda}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
+                      {record.usage.input_tokens.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
+                      {record.usage.output_tokens.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-gray-300">
+                      {formatCost(cost.totalCost)}
+                    </td>
+                  </tr>
+                  
+                  {/* Fila expandida con detalles */}
+                  {isExpanded && hasDetails && (
+                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                      <td colSpan={8} className="px-4 py-4">
+                        <div className="space-y-4">
+                          {/* Input Prompt */}
+                          {inputPromtStr && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                Prompt Enviado:
+                                {typeof record.input_promt !== 'string' && (
+                                  <span className="text-xs text-yellow-600 dark:text-yellow-400 font-normal">(formato JSON)</span>
+                                )}
+                              </h4>
+                              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                                  {inputPromtStr}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Respuesta */}
+                          {respuestaBusquedaStr && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Respuesta Obtenida:
+                                {typeof record.respuesta_busqueda !== 'string' && (
+                                  <span className="text-xs text-yellow-600 dark:text-yellow-400 font-normal">(formato JSON)</span>
+                                )}
+                              </h4>
+                              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                  {respuestaBusquedaStr}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               );
             })}
           </tbody>

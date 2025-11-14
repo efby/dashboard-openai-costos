@@ -15,6 +15,8 @@ export const mockUsageData: OpenAIUsage[] = [
     tipoPolitico: "Candidato Presidencial",
     tipo_busqueda: "datos_personales",
     ultimoCargo: null,
+    input_promt: "Por favor proporciona información biográfica detallada de Evelyn Matthei Fornet basada en su perfil oficial del senado.cl. Incluye: fecha y lugar de nacimiento, formación académica, trayectoria profesional previa a la política, y cargos políticos desempeñados.",
+    respuesta_busqueda: "Evelyn Matthei Fornet:\n\nNacimiento: 11 de noviembre de 1953, Santiago, Chile\n\nFormación Académica:\n- Ingeniera Comercial, Pontificia Universidad Católica de Chile\n- Magíster en Economía, Georgetown University, EE.UU.\n\nTrayectoria Profesional:\n- Docente universitaria en la UC y Universidad Adolfo Ibáñez\n- Economista en el Banco Central de Chile\n\nCargos Políticos:\n- Ministra del Trabajo y Previsión Social (2011-2013)\n- Senadora por Santiago Oriente (2002-2011)\n- Diputada (1990-1998)\n- Alcaldesa de Providencia (2016-presente)",
     usage: {
       input_tokens: 32579,
       input_tokens_details: { cached_tokens: 0 },
@@ -33,6 +35,8 @@ export const mockUsageData: OpenAIUsage[] = [
     tipoPolitico: "Candidato Presidencial",
     tipo_busqueda: "trayectoria_politica",
     ultimoCargo: "Diputado",
+    input_promt: "Resume la trayectoria política completa de José Antonio Kast Rist, incluyendo los partidos políticos a los que ha pertenecido, cargos de elección popular, candidaturas presidenciales y principales hitos de su carrera política.",
+    respuesta_busqueda: "Trayectoria Política de José Antonio Kast:\n\n1. Inicios: Militante de la UDI (Unión Demócrata Independiente)\n2. Diputado: 2002-2018, representando diversos distritos\n3. Fundación de partidos: \n   - Acción Republicana (2016)\n   - Partido Republicano (2019)\n4. Candidaturas Presidenciales:\n   - 2017: 7.93% de los votos (4° lugar)\n   - 2021: 44.1% en segunda vuelta (subcampeón)\n5. Posiciones: Conservadurismo social, liberalismo económico\n6. Referente de la derecha más conservadora en Chile",
     usage: {
       input_tokens: 15420,
       input_tokens_details: { cached_tokens: 0 },
