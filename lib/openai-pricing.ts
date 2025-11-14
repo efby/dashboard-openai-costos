@@ -1,27 +1,46 @@
 import { CostCalculation } from '@/types/openai-usage';
 
-// Precios de OpenAI por millón de tokens (actualizados a 2025)
+// Precios de OpenAI por millón de tokens (actualizados Noviembre 2024)
 // Formato: [input_price_per_million, output_price_per_million]
+// Fuente: https://openai.com/api/pricing/
 const MODEL_PRICING: Record<string, [number, number]> = {
-  // GPT-4 models
-  'gpt-4': [30.0, 60.0],
-  'gpt-4-32k': [60.0, 120.0],
+  // GPT-4o models (más recientes y económicos)
+  'gpt-4o': [2.50, 10.0],
+  'gpt-4o-mini': [0.15, 0.60],
+  'gpt-4o-2024-11-20': [2.50, 10.0],
+  'gpt-4o-2024-08-06': [2.50, 10.0],
+  'gpt-4o-2024-05-13': [5.0, 15.0],
+  'gpt-4o-mini-2024-07-18': [0.15, 0.60],
+  
+  // GPT-4 Turbo models
   'gpt-4-turbo': [10.0, 30.0],
   'gpt-4-turbo-preview': [10.0, 30.0],
+  'gpt-4-turbo-2024-04-09': [10.0, 30.0],
   'gpt-4-1106-preview': [10.0, 30.0],
   'gpt-4-0125-preview': [10.0, 30.0],
-  'gpt-4.1-2025-04-14': [10.0, 30.0], // Modelo del ejemplo
-  'gpt-4o': [5.0, 15.0],
-  'gpt-4o-mini': [0.15, 0.60],
+  
+  // GPT-4.1 (modelo más reciente)
+  'gpt-4.1': [3.0, 12.0],
+  'gpt-4.1-2025-04-14': [3.0, 12.0],
+  
+  // GPT-4 legacy models
+  'gpt-4': [30.0, 60.0],
+  'gpt-4-32k': [60.0, 120.0],
+  'gpt-4-0613': [30.0, 60.0],
+  'gpt-4-32k-0613': [60.0, 120.0],
   
   // GPT-3.5 models
   'gpt-3.5-turbo': [0.50, 1.50],
+  'gpt-3.5-turbo-0125': [0.50, 1.50],
+  'gpt-3.5-turbo-1106': [1.0, 2.0],
   'gpt-3.5-turbo-16k': [3.0, 4.0],
   'gpt-3.5-turbo-instruct': [1.50, 2.0],
   
-  // O1 models
+  // O1 models (reasoning models)
   'o1-preview': [15.0, 60.0],
+  'o1-preview-2024-09-12': [15.0, 60.0],
   'o1-mini': [3.0, 12.0],
+  'o1-mini-2024-09-12': [3.0, 12.0],
 };
 
 /**

@@ -129,20 +129,30 @@ npm start
 
 ## 💰 Modelos Soportados y Precios
 
-El dashboard incluye precios actualizados para los siguientes modelos:
+El dashboard incluye precios actualizados (Noviembre 2024) para los siguientes modelos:
 
-### GPT-4
-- GPT-4: $30/$60 por millón de tokens (input/output)
+### GPT-4o (Más Reciente y Económico)
+- GPT-4o: $2.50/$10.0 por millón de tokens (input/output) ⭐
+- GPT-4o-mini: $0.15/$0.60 por millón de tokens ⭐
+
+### GPT-4.1 (Nuevo)
+- GPT-4.1: $3.0/$12.0 por millón de tokens
+
+### GPT-4 Turbo
 - GPT-4 Turbo: $10/$30 por millón de tokens
-- GPT-4o: $5/$15 por millón de tokens
-- GPT-4o-mini: $0.15/$0.60 por millón de tokens
+
+### GPT-4 Legacy
+- GPT-4: $30/$60 por millón de tokens
+- GPT-4-32k: $60/$120 por millón de tokens
 
 ### GPT-3.5
 - GPT-3.5 Turbo: $0.50/$1.50 por millón de tokens
 
-### O1
+### O1 (Reasoning Models)
 - O1-preview: $15/$60 por millón de tokens
 - O1-mini: $3/$12 por millón de tokens
+
+**Fuente:** [OpenAI Pricing](https://openai.com/api/pricing/)
 
 ## 🔧 Tecnologías Utilizadas
 
