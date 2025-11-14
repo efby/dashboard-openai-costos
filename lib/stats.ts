@@ -15,7 +15,10 @@ export function calculateDashboardStats(records: OpenAIUsage[]): DashboardStats 
   const costByCandidate: Record<string, number> = {};
   const costBySearchType: Record<string, number> = {};
   const requestsByModel: Record<string, number> = {};
+  const requestsByCandidate: Record<string, number> = {};
+  const requestsBySearchType: Record<string, number> = {};
   const dailyCostsMap: Record<string, number> = {};
+  const requestsByDay: Record<string, number> = {};
   
   records.forEach(record => {
     const { inputCost, outputCost, totalCost: recordCost } = calculateCost(
@@ -36,14 +39,17 @@ export function calculateDashboardStats(records: OpenAIUsage[]): DashboardStats 
     // Por candidato
     const candidate = record.nombre_candidato || record.nombre;
     costByCandidate[candidate] = (costByCandidate[candidate] || 0) + recordCost;
+    requestsByCandidate[candidate] = (requestsByCandidate[candidate] || 0) + 1;
     
     // Por tipo de búsqueda
     costBySearchType[record.tipo_busqueda] = (costBySearchType[record.tipo_busqueda] || 0) + recordCost;
+    requestsBySearchType[record.tipo_busqueda] = (requestsBySearchType[record.tipo_busqueda] || 0) + 1;
     
     // Por día
     try {
       const date = format(parseISO(record.timestamp), 'yyyy-MM-dd');
       dailyCostsMap[date] = (dailyCostsMap[date] || 0) + recordCost;
+      requestsByDay[date] = (requestsByDay[date] || 0) + 1;
     } catch (error) {
       console.error('Error al parsear fecha:', record.timestamp);
     }
@@ -65,6 +71,9 @@ export function calculateDashboardStats(records: OpenAIUsage[]): DashboardStats 
     costBySearchType,
     dailyCosts,
     requestsByModel,
+    requestsByCandidate,
+    requestsBySearchType,
+    requestsByDay,
   };
 }
 

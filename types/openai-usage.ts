@@ -38,5 +38,8 @@ export interface DashboardStats {
   costBySearchType: Record<string, number>;
   dailyCosts: Array<{ date: string; cost: number }>;
   requestsByModel: Record<string, number>;
+  requestsByCandidate: Record<string, number>;
+  requestsBySearchType: Record<string, number>;
+  requestsByDay: Record<string, number>;
 }
 

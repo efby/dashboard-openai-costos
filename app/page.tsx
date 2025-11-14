@@ -5,6 +5,9 @@ import StatCard from '@/components/StatCard';
 import CostByModelChart from '@/components/CostByModelChart';
 import DailyCostChart from '@/components/DailyCostChart';
 import CostByCandidateChart from '@/components/CostByCandidateChart';
+import CostBySearchTypeChart from '@/components/CostBySearchTypeChart';
+import TopCandidatesChart from '@/components/TopCandidatesChart';
+import TemporalAnalysisChart from '@/components/TemporalAnalysisChart';
 import UsageTable from '@/components/UsageTable';
 import { DashboardStats, OpenAIUsage } from '@/types/openai-usage';
 import { formatCost } from '@/lib/openai-pricing';
@@ -197,47 +200,49 @@ export default function Home() {
           />
         </div>
 
-        {/* Charts */}
+        {/* Charts Principales */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <DailyCostChart data={stats.dailyCosts} />
           <CostByModelChart data={stats.costByModel} />
         </div>
 
+        {/* Sección: Ranking de Candidatos y Análisis por Tipo de Búsqueda */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <span className="text-3xl">📊</span>
+            Análisis Detallado
+          </h2>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <TopCandidatesChart 
+            data={stats.costByCandidate} 
+            requestsByCandidate={stats.requestsByCandidate}
+          />
+          <CostBySearchTypeChart 
+            data={stats.costBySearchType}
+            requestsByType={stats.requestsBySearchType}
+          />
+        </div>
+
+        {/* Sección: Análisis Temporal */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <span className="text-3xl">📅</span>
+            Análisis Temporal
+          </h2>
+        </div>
+
+        <div className="mb-8">
+          <TemporalAnalysisChart 
+            dailyCosts={stats.dailyCosts}
+            requestsByDay={stats.requestsByDay}
+          />
+        </div>
+
+        {/* Distribución por Candidato (Gráfico Original) */}
+        <div className="mb-8">
           <CostByCandidateChart data={stats.costByCandidate} />
-          
-          {/* Cost by Search Type */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Costos por Tipo de Búsqueda
-            </h3>
-            <div className="space-y-3">
-              {Object.entries(stats.costBySearchType)
-                .sort(([, a], [, b]) => b - a)
-                .map(([type, cost]) => (
-                  <div key={type} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full flex-1">
-                        <div
-                          className="h-2 bg-blue-500 rounded-full"
-                          style={{
-                            width: `${(cost / stats.totalCost) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="ml-4 min-w-[120px] text-right">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {type}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatCost(cost)} ({((cost / stats.totalCost) * 100).toFixed(1)}%)
-                      </p>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
         </div>
 
         {/* Usage Table */}
