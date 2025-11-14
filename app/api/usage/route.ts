@@ -3,6 +3,10 @@ import { getAllUsageRecords } from '@/lib/dynamodb';
 import { calculateDashboardStats } from '@/lib/stats';
 import { mockUsageData, isDemoMode } from '@/lib/mock-data';
 
+// Configuración para forzar ejecución dinámica (sin caché)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     // Si está en modo demo, usar datos de prueba
@@ -10,7 +14,7 @@ export async function GET() {
       console.log('🔧 Modo Demo: Usando datos de ejemplo');
       const stats = calculateDashboardStats(mockUsageData);
       
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         demo: true,
         data: {
@@ -18,13 +22,20 @@ export async function GET() {
           records: mockUsageData,
         },
       });
+      
+      // Headers para desactivar caché
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      
+      return response;
     }
 
     // Modo producción: obtener datos de DynamoDB
     const records = await getAllUsageRecords();
     const stats = calculateDashboardStats(records);
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       demo: false,
       data: {
@@ -32,6 +43,13 @@ export async function GET() {
         records,
       },
     });
+    
+    // Headers para desactivar caché
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('Error en API:', error);
     return NextResponse.json(

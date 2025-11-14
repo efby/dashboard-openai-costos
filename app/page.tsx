@@ -24,7 +24,18 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/usage');
+      
+      // Agregar timestamp para evitar caché y headers no-cache
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/usage?t=${timestamp}`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
       const data = await response.json();
 
       if (!data.success) {
