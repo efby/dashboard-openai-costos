@@ -139,7 +139,7 @@ export default function UsageTable({ records }: UsageTableProps) {
             <span className="text-xs text-gray-500 dark:text-gray-400">Filtros activos:</span>
             {searchTerm && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
-                Búsqueda: "{searchTerm}"
+                Búsqueda: &ldquo;{searchTerm}&rdquo;
                 <button
                   onClick={() => {
                     setSearchTerm('');
