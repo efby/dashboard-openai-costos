@@ -37,14 +37,14 @@ export function calculateCost(
   outputTokens: number
 ): CostCalculation {
   // Buscar el precio del modelo (intentar match exacto primero)
-  let pricing = MODEL_PRICING[modelName];
+  let pricing: [number, number] | undefined = MODEL_PRICING[modelName];
   
   // Si no se encuentra, intentar buscar por prefijo
   if (!pricing) {
     const modelKey = Object.keys(MODEL_PRICING).find(key => 
       modelName.toLowerCase().startsWith(key.toLowerCase())
     );
-    pricing = modelKey ? MODEL_PRICING[modelKey] : null;
+    pricing = modelKey ? MODEL_PRICING[modelKey] : undefined;
   }
   
   // Si aún no se encuentra, usar precio por defecto de GPT-4
@@ -78,13 +78,13 @@ export function formatCost(cost: number): string {
  * Obtiene información de precios para un modelo
  */
 export function getModelPricing(modelName: string): { input: number; output: number } | null {
-  let pricing = MODEL_PRICING[modelName];
+  let pricing: [number, number] | undefined = MODEL_PRICING[modelName];
   
   if (!pricing) {
     const modelKey = Object.keys(MODEL_PRICING).find(key => 
       modelName.toLowerCase().startsWith(key.toLowerCase())
     );
-    pricing = modelKey ? MODEL_PRICING[modelKey] : null;
+    pricing = modelKey ? MODEL_PRICING[modelKey] : undefined;
   }
   
   if (!pricing) return null;
