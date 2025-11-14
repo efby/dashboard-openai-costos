@@ -1,0 +1,97 @@
+import { CostCalculation } from '@/types/openai-usage';
+
+// Precios de OpenAI por millón de tokens (actualizados a 2025)
+// Formato: [input_price_per_million, output_price_per_million]
+const MODEL_PRICING: Record<string, [number, number]> = {
+  // GPT-4 models
+  'gpt-4': [30.0, 60.0],
+  'gpt-4-32k': [60.0, 120.0],
+  'gpt-4-turbo': [10.0, 30.0],
+  'gpt-4-turbo-preview': [10.0, 30.0],
+  'gpt-4-1106-preview': [10.0, 30.0],
+  'gpt-4-0125-preview': [10.0, 30.0],
+  'gpt-4.1-2025-04-14': [10.0, 30.0], // Modelo del ejemplo
+  'gpt-4o': [5.0, 15.0],
+  'gpt-4o-mini': [0.15, 0.60],
+  
+  // GPT-3.5 models
+  'gpt-3.5-turbo': [0.50, 1.50],
+  'gpt-3.5-turbo-16k': [3.0, 4.0],
+  'gpt-3.5-turbo-instruct': [1.50, 2.0],
+  
+  // O1 models
+  'o1-preview': [15.0, 60.0],
+  'o1-mini': [3.0, 12.0],
+};
+
+/**
+ * Calcula el costo de una llamada a la API de OpenAI
+ * @param modelName - Nombre del modelo usado
+ * @param inputTokens - Número de tokens de entrada
+ * @param outputTokens - Número de tokens de salida
+ * @returns Objeto con los costos desglosados
+ */
+export function calculateCost(
+  modelName: string,
+  inputTokens: number,
+  outputTokens: number
+): CostCalculation {
+  // Buscar el precio del modelo (intentar match exacto primero)
+  let pricing = MODEL_PRICING[modelName];
+  
+  // Si no se encuentra, intentar buscar por prefijo
+  if (!pricing) {
+    const modelKey = Object.keys(MODEL_PRICING).find(key => 
+      modelName.toLowerCase().startsWith(key.toLowerCase())
+    );
+    pricing = modelKey ? MODEL_PRICING[modelKey] : null;
+  }
+  
+  // Si aún no se encuentra, usar precio por defecto de GPT-4
+  if (!pricing) {
+    console.warn(`Modelo no encontrado: ${modelName}, usando precios de GPT-4 por defecto`);
+    pricing = MODEL_PRICING['gpt-4'] || [10.0, 30.0];
+  }
+  
+  const [inputPricePerMillion, outputPricePerMillion] = pricing;
+  
+  // Calcular costos (tokens / 1,000,000 * precio por millón)
+  const inputCost = (inputTokens / 1_000_000) * inputPricePerMillion;
+  const outputCost = (outputTokens / 1_000_000) * outputPricePerMillion;
+  const totalCost = inputCost + outputCost;
+  
+  return {
+    inputCost: Number(inputCost.toFixed(6)),
+    outputCost: Number(outputCost.toFixed(6)),
+    totalCost: Number(totalCost.toFixed(6)),
+  };
+}
+
+/**
+ * Formatea un costo en dólares
+ */
+export function formatCost(cost: number): string {
+  return `$${cost.toFixed(4)}`;
+}
+
+/**
+ * Obtiene información de precios para un modelo
+ */
+export function getModelPricing(modelName: string): { input: number; output: number } | null {
+  let pricing = MODEL_PRICING[modelName];
+  
+  if (!pricing) {
+    const modelKey = Object.keys(MODEL_PRICING).find(key => 
+      modelName.toLowerCase().startsWith(key.toLowerCase())
+    );
+    pricing = modelKey ? MODEL_PRICING[modelKey] : null;
+  }
+  
+  if (!pricing) return null;
+  
+  return {
+    input: pricing[0],
+    output: pricing[1],
+  };
+}
+
