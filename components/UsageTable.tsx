@@ -187,6 +187,9 @@ export default function UsageTable({ records }: UsageTableProps) {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 <span className="sr-only">Expandir</span>
               </th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Estado
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Fecha
               </th>
@@ -233,6 +236,36 @@ export default function UsageTable({ records }: UsageTableProps) {
                   : '';
               
               const hasDetails = inputPromtStr || respuestaBusquedaStr;
+              
+              // Verificar si hay campos null en respuesta_busqueda
+              const checkForNulls = (obj: any): { hasNulls: boolean; nullFields: string[] } => {
+                if (!obj) return { hasNulls: false, nullFields: [] };
+                if (typeof obj === 'string') return { hasNulls: false, nullFields: [] };
+                
+                const nullFields: string[] = [];
+                Object.entries(obj).forEach(([key, value]) => {
+                  if (value === null || value === undefined || value === '') {
+                    nullFields.push(key);
+                  }
+                });
+                
+                return { hasNulls: nullFields.length > 0, nullFields };
+              };
+              
+              const responseStatus = checkForNulls(record.respuesta_busqueda);
+              
+              // Determinar el estado general del registro
+              const getRecordStatus = () => {
+                if (!record.respuesta_busqueda) {
+                  return { type: 'no-response', label: 'Sin respuesta', color: 'gray' };
+                }
+                if (responseStatus.hasNulls) {
+                  return { type: 'warning', label: 'Campos incompletos', color: 'yellow' };
+                }
+                return { type: 'success', label: 'Completo', color: 'green' };
+              };
+              
+              const status = getRecordStatus();
 
               return (
                 <>
@@ -256,6 +289,38 @@ export default function UsageTable({ records }: UsageTableProps) {
                         </button>
                       )}
                     </td>
+                    
+                    {/* Estado de la respuesta */}
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <button
+                        onClick={() => hasDetails && setExpandedRow(isExpanded ? null : record.id)}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors
+                          ${status.color === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800' : ''}
+                          ${status.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800 cursor-pointer' : ''}
+                          ${status.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : ''}
+                        `}
+                        disabled={!hasDetails}
+                        title={status.type === 'warning' ? `Campos incompletos: ${responseStatus.nullFields.join(', ')}` : status.label}
+                      >
+                        {status.color === 'green' && (
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {status.color === 'yellow' && (
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {status.color === 'gray' && (
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        <span className="hidden sm:inline">{status.label}</span>
+                      </button>
+                    </td>
+                    
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       {format(parseISO(record.timestamp), "dd/MM/yyyy HH:mm", { locale: es })}
                     </td>
@@ -284,8 +349,36 @@ export default function UsageTable({ records }: UsageTableProps) {
                   {/* Fila expandida con detalles */}
                   {isExpanded && hasDetails && (
                     <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                      <td colSpan={8} className="px-4 py-4">
+                      <td colSpan={9} className="px-4 py-4">
                         <div className="space-y-4">
+                          {/* Advertencia de campos null */}
+                          {responseStatus.hasNulls && (
+                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                              <div className="flex items-start gap-2">
+                                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <div>
+                                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+                                    ⚠️ Respuesta con campos incompletos
+                                  </p>
+                                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                                    Los siguientes campos están vacíos o son nulos:
+                                  </p>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {responseStatus.nullFields.map((field) => (
+                                      <span
+                                        key={field}
+                                        className="inline-flex items-center px-2 py-1 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded text-xs font-mono"
+                                      >
+                                        {field}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           {/* Input Prompt */}
                           {inputPromtStr && (
                             <div>

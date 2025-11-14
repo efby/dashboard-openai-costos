@@ -55,6 +55,16 @@ export const mockUsageData: OpenAIUsage[] = [
     tipoPolitico: "Ex Presidente",
     tipo_busqueda: "programa_gobierno",
     ultimoCargo: "Presidente de la República",
+    input_promt: "Resume los programas de gobierno de Michelle Bachelet, incluyendo políticas sociales, educación, salud y reformas estructurales.",
+    respuesta_busqueda: {
+      periodo: "2006-2010 y 2014-2018",
+      fuente: "gobierno.cl",
+      cargo: "Presidenta de la República",
+      partido: "Partido Socialista",
+      validador: null,  // Campo null - generará advertencia
+      estado_revision: null,  // Campo null - generará advertencia
+      mostrar: true
+    },
     usage: {
       input_tokens: 28900,
       input_tokens_details: { cached_tokens: 5000 },
