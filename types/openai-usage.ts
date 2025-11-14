@@ -9,9 +9,9 @@ export interface OpenAIUsage {
   tipo_busqueda: string;
   ultimoCargo: string | null;
   // Nuevos campos para auditoría y validación
-  // Pueden ser string o objeto (se convertirán a JSON si es necesario)
-  input_promt?: string | Record<string, any>;           
-  respuesta_busqueda?: string | Record<string, any>;    
+  // Pueden ser string, objeto o array de objetos (se convertirán a JSON si es necesario)
+  input_promt?: string | Record<string, any> | Array<any>;           
+  respuesta_busqueda?: string | Record<string, any> | Array<any>;    
   usage: {
     input_tokens: number;
     input_tokens_details: {

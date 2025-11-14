@@ -57,13 +57,15 @@ export const mockUsageData: OpenAIUsage[] = [
     ultimoCargo: "Presidente de la República",
     input_promt: "Resume los programas de gobierno de Michelle Bachelet, incluyendo políticas sociales, educación, salud y reformas estructurales.",
     respuesta_busqueda: {
-      periodo: "2006-2010 y 2014-2018",
-      fuente: "gobierno.cl",
-      cargo: "Presidenta de la República",
-      partido: "Partido Socialista",
-      validador: null,  // Campo null - generará advertencia
-      estado_revision: null,  // Campo null - generará advertencia
-      mostrar: true
+      periodo: null,       // 🚨 CRÍTICO: >50% nulls
+      fuente: null,
+      cargo: "Presidenta",
+      partido: null,
+      validador: null,
+      estado_revision: null,
+      mostrar: false,
+      año_inicio: null,
+      año_fin: null
     },
     usage: {
       input_tokens: 28900,
@@ -83,6 +85,21 @@ export const mockUsageData: OpenAIUsage[] = [
     tipoPolitico: "Presidente",
     tipo_busqueda: "propuestas",
     ultimoCargo: "Presidente de la República",
+    input_promt: "Busca información sobre Gabriel Boric Font, incluyendo sus propuestas económicas y su trayectoria política.",
+    respuesta_busqueda: [
+      {
+        periodo: null,  // ⚠️ Campo null
+        fuente: [
+          "https://es.wikipedia.org/wiki/Gabriel_Boric",
+          "https://www.gob.cl/presidente/"
+        ],
+        validador: "",  // ⚠️ Campo vacío
+        cargo: "Presidente de la República",
+        estado_revision: "xRevisar",
+        mostrar: true,
+        partido: "Convergencia Social"
+      }
+    ],
     usage: {
       input_tokens: 8500,
       input_tokens_details: { cached_tokens: 0 },

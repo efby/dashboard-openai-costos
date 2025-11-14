@@ -5,6 +5,7 @@ import { OpenAIUsage } from '@/types/openai-usage';
 import { calculateCost, formatCost } from '@/lib/openai-pricing';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import UsageDetailModal from './UsageDetailModal';
 
 interface UsageTableProps {
   records: OpenAIUsage[];
@@ -15,8 +16,20 @@ export default function UsageTable({ records }: UsageTableProps) {
   const [filterModel, setFilterModel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<OpenAIUsage | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const itemsPerPage = 10;
+
+  // Función para abrir el modal
+  const openModal = (record: OpenAIUsage) => {
+    setSelectedRecord(record);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedRecord(null), 200);
+  };
 
   // Obtener modelos únicos para el filtro
   const uniqueModels = Array.from(new Set(records.map(r => r.modelo_ai))).sort();
@@ -220,36 +233,49 @@ export default function UsageTable({ records }: UsageTableProps) {
                 record.usage.input_tokens,
                 record.usage.output_tokens
               );
-              const isExpanded = expandedRow === record.id;
               
-              // Convertir a string si es objeto
-              const inputPromtStr = typeof record.input_promt === 'string' 
-                ? record.input_promt 
-                : record.input_promt 
-                  ? JSON.stringify(record.input_promt, null, 2)
-                  : '';
+              const hasDetails = record.input_promt || record.respuesta_busqueda;
               
-              const respuestaBusquedaStr = typeof record.respuesta_busqueda === 'string'
-                ? record.respuesta_busqueda
-                : record.respuesta_busqueda
-                  ? JSON.stringify(record.respuesta_busqueda, null, 2)
-                  : '';
-              
-              const hasDetails = inputPromtStr || respuestaBusquedaStr;
-              
-              // Verificar si hay campos null en respuesta_busqueda
-              const checkForNulls = (obj: any): { hasNulls: boolean; nullFields: string[] } => {
-                if (!obj) return { hasNulls: false, nullFields: [] };
-                if (typeof obj === 'string') return { hasNulls: false, nullFields: [] };
+              // Verificar si hay campos null en respuesta_busqueda (puede ser objeto o array)
+              const checkForNulls = (data: any): { hasNulls: boolean; nullFields: string[]; totalFields: number; percentage: number; isCritical: boolean } => {
+                if (!data) return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
+                if (typeof data === 'string') return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
                 
                 const nullFields: string[] = [];
-                Object.entries(obj).forEach(([key, value]) => {
-                  if (value === null || value === undefined || value === '') {
-                    nullFields.push(key);
-                  }
-                });
+                let totalFields = 0;
                 
-                return { hasNulls: nullFields.length > 0, nullFields };
+                if (Array.isArray(data)) {
+                  data.forEach((item, index) => {
+                    if (item && typeof item === 'object') {
+                      const entries = Object.entries(item);
+                      totalFields += entries.length;
+                      entries.forEach(([key, value]) => {
+                        if (value === null || value === undefined || value === '') {
+                          nullFields.push(`[${index}].${key}`);
+                        }
+                      });
+                    }
+                  });
+                } else if (typeof data === 'object') {
+                  const entries = Object.entries(data);
+                  totalFields = entries.length;
+                  entries.forEach(([key, value]) => {
+                    if (value === null || value === undefined || value === '') {
+                      nullFields.push(key);
+                    }
+                  });
+                }
+                
+                const percentage = totalFields > 0 ? (nullFields.length / totalFields) * 100 : 0;
+                const isCritical = percentage > 50;
+                
+                return { 
+                  hasNulls: nullFields.length > 0, 
+                  nullFields, 
+                  totalFields,
+                  percentage: Math.round(percentage),
+                  isCritical 
+                };
               };
               
               const responseStatus = checkForNulls(record.respuesta_busqueda);
@@ -257,34 +283,37 @@ export default function UsageTable({ records }: UsageTableProps) {
               // Determinar el estado general del registro
               const getRecordStatus = () => {
                 if (!record.respuesta_busqueda) {
-                  return { type: 'no-response', label: 'Sin respuesta', color: 'gray' };
+                  return { type: 'no-response', label: 'Sin respuesta', color: 'gray', icon: '✕' };
+                }
+                if (responseStatus.isCritical) {
+                  return { type: 'critical', label: 'Crítico', color: 'red', icon: '⚠' };
                 }
                 if (responseStatus.hasNulls) {
-                  return { type: 'warning', label: 'Campos incompletos', color: 'yellow' };
+                  return { type: 'warning', label: 'Incompleto', color: 'yellow', icon: '⚠' };
                 }
-                return { type: 'success', label: 'Completo', color: 'green' };
+                return { type: 'success', label: 'Completo', color: 'green', icon: '✓' };
               };
               
               const status = getRecordStatus();
 
               return (
-                <>
                   <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
-                    {/* Botón expandir */}
+                    {/* Botón ver detalles */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       {hasDetails && (
                         <button
-                          onClick={() => setExpandedRow(isExpanded ? null : record.id)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-transform"
+                          onClick={() => openModal(record)}
+                          className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                           title="Ver detalles de prompt y respuesta"
                         >
                           <svg
-                            className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            className="w-5 h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
                       )}
@@ -293,31 +322,25 @@ export default function UsageTable({ records }: UsageTableProps) {
                     {/* Estado de la respuesta */}
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       <button
-                        onClick={() => hasDetails && setExpandedRow(isExpanded ? null : record.id)}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors
-                          ${status.color === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800' : ''}
-                          ${status.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800 cursor-pointer' : ''}
-                          ${status.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : ''}
+                        onClick={() => hasDetails && openModal(record)}
+                        className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium transition-colors
+                          ${status.color === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 cursor-pointer' : ''}
+                          ${status.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800 cursor-pointer' : ''}
+                          ${status.color === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 cursor-pointer' : ''}
+                          ${status.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : ''}
                         `}
                         disabled={!hasDetails}
-                        title={status.type === 'warning' ? `Campos incompletos: ${responseStatus.nullFields.join(', ')}` : status.label}
+                        title={
+                          status.type === 'critical' 
+                            ? `🚨 CRÍTICO: ${responseStatus.percentage}% de campos vacíos (${responseStatus.nullFields.length}/${responseStatus.totalFields}). Click para ver detalles.`
+                            : status.type === 'warning'
+                            ? `⚠️ ${responseStatus.percentage}% de campos vacíos (${responseStatus.nullFields.length}/${responseStatus.totalFields}). Click para ver detalles.`
+                            : status.type === 'success'
+                            ? '✓ Todos los campos completos. Click para ver detalles.'
+                            : 'Sin respuesta'
+                        }
                       >
-                        {status.color === 'green' && (
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                        {status.color === 'yellow' && (
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                        {status.color === 'gray' && (
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                        <span className="hidden sm:inline">{status.label}</span>
+                        {status.icon}
                       </button>
                     </td>
                     
@@ -345,84 +368,6 @@ export default function UsageTable({ records }: UsageTableProps) {
                       {formatCost(cost.totalCost)}
                     </td>
                   </tr>
-                  
-                  {/* Fila expandida con detalles */}
-                  {isExpanded && hasDetails && (
-                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                      <td colSpan={9} className="px-4 py-4">
-                        <div className="space-y-4">
-                          {/* Advertencia de campos null */}
-                          {responseStatus.hasNulls && (
-                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-                              <div className="flex items-start gap-2">
-                                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                <div>
-                                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
-                                    ⚠️ Respuesta con campos incompletos
-                                  </p>
-                                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                                    Los siguientes campos están vacíos o son nulos:
-                                  </p>
-                                  <div className="flex flex-wrap gap-2 mt-2">
-                                    {responseStatus.nullFields.map((field) => (
-                                      <span
-                                        key={field}
-                                        className="inline-flex items-center px-2 py-1 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded text-xs font-mono"
-                                      >
-                                        {field}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          {/* Input Prompt */}
-                          {inputPromtStr && (
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                                Prompt Enviado:
-                                {typeof record.input_promt !== 'string' && (
-                                  <span className="text-xs text-yellow-600 dark:text-yellow-400 font-normal">(formato JSON)</span>
-                                )}
-                              </h4>
-                              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
-                                  {inputPromtStr}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Respuesta */}
-                          {respuestaBusquedaStr && (
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Respuesta Obtenida:
-                                {typeof record.respuesta_busqueda !== 'string' && (
-                                  <span className="text-xs text-yellow-600 dark:text-yellow-400 font-normal">(formato JSON)</span>
-                                )}
-                              </h4>
-                              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {respuestaBusquedaStr}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
               );
             })}
           </tbody>
@@ -458,6 +403,13 @@ export default function UsageTable({ records }: UsageTableProps) {
           </button>
         </div>
       </div>
+
+      {/* Modal para mostrar detalles */}
+      <UsageDetailModal 
+        record={selectedRecord}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 }
