@@ -83,12 +83,13 @@ export default function UsageTable({ records }: UsageTableProps) {
     filteredRecords = records.filter(r => r.modelo_ai === filterModel);
   }
 
-  // Filtrar por búsqueda de texto (nombre de candidato)
+  // Filtrar por búsqueda de texto (nombre de candidato y tipo político)
   if (searchTerm.trim() !== '') {
     filteredRecords = filteredRecords.filter(r => {
       const candidateName = (r.nombre_candidato || r.nombre).toLowerCase();
+      const candidateType = (r.tipoPolitico || '').toLowerCase();
       const search = searchTerm.toLowerCase();
-      return candidateName.includes(search);
+      return candidateName.includes(search) || candidateType.includes(search);
     });
   }
 
@@ -151,7 +152,7 @@ export default function UsageTable({ records }: UsageTableProps) {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Buscar por nombre de candidato..."
+              placeholder="Buscar por candidato o tipo político..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {searchTerm && (
@@ -257,6 +258,9 @@ export default function UsageTable({ records }: UsageTableProps) {
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Candidato
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Tipo
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Modelo
@@ -374,7 +378,7 @@ export default function UsageTable({ records }: UsageTableProps) {
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       <button
                         onClick={() => hasDetails && openModal(record)}
-                        className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium transition-colors
+                        className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors
                           ${status.color === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 cursor-pointer' : ''}
                           ${status.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800 cursor-pointer' : ''}
                           ${status.color === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 cursor-pointer' : ''}
@@ -391,7 +395,10 @@ export default function UsageTable({ records }: UsageTableProps) {
                             : 'Sin respuesta'
                         }
                       >
-                        {status.icon}
+                        <span>{status.icon}</span>
+                        {(status.type === 'critical' || status.type === 'warning') && (
+                          <span className="font-semibold">{responseStatus.percentage}%</span>
+                        )}
                       </button>
                     </td>
                     
@@ -400,6 +407,11 @@ export default function UsageTable({ records }: UsageTableProps) {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
                       {record.nombre_candidato || record.nombre}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                      <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs">
+                        {record.tipoPolitico || 'N/A'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
