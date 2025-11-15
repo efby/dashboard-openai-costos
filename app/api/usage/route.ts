@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAllUsageRecords } from '@/lib/dynamodb';
 import { calculateDashboardStats } from '@/lib/stats';
 import { mockUsageData, isDemoMode } from '@/lib/mock-data';
+import { checkPricingFreshness } from '@/lib/openai-pricing';
 
 // Configuración para forzar ejecución dinámica (sin caché)
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,9 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
+    // Verificar si los precios de OpenAI están actualizados
+    checkPricingFreshness();
+    
     // Si está en modo demo, usar datos de prueba
     if (isDemoMode()) {
       console.log('🔧 Modo Demo: Usando datos de ejemplo');

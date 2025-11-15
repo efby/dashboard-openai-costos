@@ -1,8 +1,28 @@
 import { CostCalculation } from '@/types/openai-usage';
 
-// Precios de OpenAI por millón de tokens (actualizados Noviembre 2024)
+/**
+ * ⚠️ IMPORTANTE: ACTUALIZACIÓN MANUAL DE PRECIOS
+ * 
+ * OpenAI NO proporciona una API para consultar precios automáticamente.
+ * Los precios deben actualizarse manualmente desde la página oficial.
+ * 
+ * 📅 ÚLTIMA ACTUALIZACIÓN: 15 Noviembre 2024
+ * 🔗 FUENTE OFICIAL: https://openai.com/api/pricing/
+ * 👤 ACTUALIZADO POR: Sistema inicial
+ * 
+ * 🔄 FRECUENCIA RECOMENDADA: Verificar mensualmente
+ * 📧 NOTIFICACIÓN: Configurar alerta de calendario para revisar precios
+ * 
+ * Para actualizar:
+ * 1. Visitar: https://openai.com/api/pricing/
+ * 2. Revisar cambios en modelos
+ * 3. Actualizar valores en MODEL_PRICING
+ * 4. Actualizar fecha arriba
+ * 5. Commit con mensaje: "chore: Actualizar precios OpenAI [fecha]"
+ */
+
+// Precios de OpenAI por millón de tokens
 // Formato: [input_price_per_million, output_price_per_million]
-// Fuente: https://openai.com/api/pricing/
 const MODEL_PRICING: Record<string, [number, number]> = {
   // GPT-4o models (más recientes y económicos)
   'gpt-4o': [2.50, 10.0],
@@ -112,5 +132,53 @@ export function getModelPricing(modelName: string): { input: number; output: num
     input: pricing[0],
     output: pricing[1],
   };
+}
+
+/**
+ * Metadata de precios
+ */
+export const PRICING_METADATA = {
+  lastUpdate: '2024-11-15',
+  source: 'https://openai.com/api/pricing/',
+  updatedBy: 'Sistema inicial',
+  recommendedCheckFrequency: 'monthly'
+};
+
+/**
+ * Verifica si los precios pueden estar desactualizados
+ * Retorna true si han pasado más de 30 días desde la última actualización
+ */
+export function arePricesOutdated(): boolean {
+  const lastUpdate = new Date(PRICING_METADATA.lastUpdate);
+  const now = new Date();
+  const daysSinceUpdate = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+  return daysSinceUpdate > 30;
+}
+
+/**
+ * Obtiene el número de días desde la última actualización
+ */
+export function getDaysSinceLastUpdate(): number {
+  const lastUpdate = new Date(PRICING_METADATA.lastUpdate);
+  const now = new Date();
+  return Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Muestra un warning en consola si los precios están desactualizados
+ */
+export function checkPricingFreshness(): void {
+  if (arePricesOutdated()) {
+    const days = getDaysSinceLastUpdate();
+    console.warn(
+      `⚠️ PRECIOS POTENCIALMENTE DESACTUALIZADOS\n` +
+      `📅 Última actualización: ${PRICING_METADATA.lastUpdate} (hace ${days} días)\n` +
+      `🔗 Verificar precios en: ${PRICING_METADATA.source}\n` +
+      `📝 Archivo a actualizar: lib/openai-pricing.ts`
+    );
+  } else {
+    const days = getDaysSinceLastUpdate();
+    console.log(`✅ Precios actualizados (última revisión hace ${days} días)`);
+  }
 }
 
