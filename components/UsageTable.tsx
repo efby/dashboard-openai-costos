@@ -14,6 +14,7 @@ interface UsageTableProps {
 export default function UsageTable({ records }: UsageTableProps) {
   const [sortBy, setSortBy] = useState<'date' | 'cost' | 'status'>('date');
   const [filterModel, setFilterModel] = useState<string>('all');
+  const [filterSearchType, setFilterSearchType] = useState<string>('all');
   const [filterCritical, setFilterCritical] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,11 +78,19 @@ export default function UsageTable({ records }: UsageTableProps) {
 
   // Obtener modelos únicos para el filtro
   const uniqueModels = Array.from(new Set(records.map(r => r.modelo_ai))).sort();
+  
+  // Obtener tipos de búsqueda únicos para el filtro
+  const uniqueSearchTypes = Array.from(new Set(records.map(r => r.tipo_busqueda))).sort();
 
   // Filtrar registros por modelo
   let filteredRecords = records;
   if (filterModel !== 'all') {
     filteredRecords = records.filter(r => r.modelo_ai === filterModel);
+  }
+  
+  // Filtrar registros por tipo de búsqueda
+  if (filterSearchType !== 'all') {
+    filteredRecords = filteredRecords.filter(r => r.tipo_busqueda === filterSearchType);
   }
 
   // Filtrar por búsqueda de texto (nombre de candidato y tipo político)
@@ -229,6 +238,19 @@ export default function UsageTable({ records }: UsageTableProps) {
               ))}
             </select>
             <select
+              value={filterSearchType}
+              onChange={(e) => {
+                setFilterSearchType(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Todos los tipos de búsqueda</option>
+              {uniqueSearchTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'date' | 'cost' | 'status')}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -260,7 +282,7 @@ export default function UsageTable({ records }: UsageTableProps) {
         </div>
 
         {/* Indicador de filtros activos */}
-        {(searchTerm || filterModel !== 'all' || filterCritical) && (
+        {(searchTerm || filterModel !== 'all' || filterSearchType !== 'all' || filterCritical) && (
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-xs text-gray-500 dark:text-gray-400">Filtros activos:</span>
             {searchTerm && (
@@ -291,6 +313,20 @@ export default function UsageTable({ records }: UsageTableProps) {
                 </button>
               </span>
             )}
+            {filterSearchType !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full text-xs">
+                Tipo: {filterSearchType}
+                <button
+                  onClick={() => {
+                    setFilterSearchType('all');
+                    setCurrentPage(1);
+                  }}
+                  className="hover:text-indigo-600 dark:hover:text-indigo-100"
+                >
+                  ×
+                </button>
+              </span>
+            )}
             {filterCritical && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full text-xs font-medium">
                 🚨 Solo críticos (&gt;50% null)
@@ -309,6 +345,7 @@ export default function UsageTable({ records }: UsageTableProps) {
               onClick={() => {
                 setSearchTerm('');
                 setFilterModel('all');
+                setFilterSearchType('all');
                 setFilterCritical(false);
                 setCurrentPage(1);
               }}
