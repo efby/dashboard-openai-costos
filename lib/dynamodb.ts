@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand, ScanCommandOutput } from '@aws-sdk/lib-dynamodb';
 import { OpenAIUsage } from '@/types/openai-usage';
 
 let client: DynamoDBDocumentClient | null = null;
@@ -25,6 +25,7 @@ function getClient(): DynamoDBDocumentClient {
 
 /**
  * Obtiene todos los registros de uso de OpenAI desde DynamoDB
+ * Maneja la paginación automáticamente para obtener TODOS los registros
  */
 export async function getAllUsageRecords(): Promise<OpenAIUsage[]> {
   const client = getClient();
@@ -35,14 +36,38 @@ export async function getAllUsageRecords(): Promise<OpenAIUsage[]> {
   }
   
   try {
-    const command = new ScanCommand({
-      TableName: tableName,
-    });
+    const allItems: OpenAIUsage[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+    let scanCount = 0;
     
-    const response = await client.send(command);
-    return (response.Items as OpenAIUsage[]) || [];
+    // Loop para manejar la paginación de DynamoDB
+    do {
+      scanCount++;
+      console.log(`📊 DynamoDB Scan #${scanCount}${lastEvaluatedKey ? ' (paginación...)' : ''}`);
+      
+      const command: ScanCommand = new ScanCommand({
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey, // Continúa desde donde quedó
+      });
+      
+      const response: ScanCommandOutput = await client.send(command);
+      
+      // Agregar items de esta página
+      if (response.Items && response.Items.length > 0) {
+        allItems.push(...(response.Items as OpenAIUsage[]));
+        console.log(`  ✅ Obtenidos ${response.Items.length} registros (Total acumulado: ${allItems.length})`);
+      }
+      
+      // Si hay LastEvaluatedKey, significa que hay más páginas
+      lastEvaluatedKey = response.LastEvaluatedKey;
+      
+    } while (lastEvaluatedKey); // Continúa mientras haya más páginas
+    
+    console.log(`✅ Scan completo: ${allItems.length} registros totales en ${scanCount} página(s)`);
+    return allItems;
+    
   } catch (error) {
-    console.error('Error al obtener datos de DynamoDB:', error);
+    console.error('❌ Error al obtener datos de DynamoDB:', error);
     throw new Error('Error al conectar con DynamoDB');
   }
 }
