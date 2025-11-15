@@ -23,13 +23,21 @@ export default function UsageDetailModal({ record, isOpen, onClose }: UsageDetai
   const getDataType = (data: any): string => {
     if (!data) return '';
     if (typeof data === 'string') return 'texto';
-    if (Array.isArray(data)) return `array (${data.length} ${data.length === 1 ? 'elemento' : 'elementos'})`;
+    if (Array.isArray(data)) {
+      if (data.length === 0) return 'array vacío (⚠️ crítico)';
+      return `array (${data.length} ${data.length === 1 ? 'elemento' : 'elementos'})`;
+    }
     return 'objeto';
   };
 
   const checkForNulls = (data: any): { hasNulls: boolean; nullFields: string[]; totalFields: number; percentage: number; isCritical: boolean } => {
     if (!data) return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
     if (typeof data === 'string') return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
+
+    // Array vacío [] = dato vacío (crítico)
+    if (Array.isArray(data) && data.length === 0) {
+      return { hasNulls: true, nullFields: ['array vacío'], totalFields: 1, percentage: 100, isCritical: true };
+    }
 
     const nullFields: string[] = [];
     let totalFields = 0;
@@ -41,7 +49,7 @@ export default function UsageDetailModal({ record, isOpen, onClose }: UsageDetai
           const entries = Object.entries(item).filter(([key]) => !ignoredFields.includes(key));
           totalFields += entries.length;
           entries.forEach(([key, value]) => {
-            if (value === null || value === undefined || value === '') {
+            if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
               nullFields.push(`[${index}].${key}`);
             }
           });
@@ -51,7 +59,7 @@ export default function UsageDetailModal({ record, isOpen, onClose }: UsageDetai
       const entries = Object.entries(data).filter(([key]) => !ignoredFields.includes(key));
       totalFields = entries.length;
       entries.forEach(([key, value]) => {
-        if (value === null || value === undefined || value === '') {
+        if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
           nullFields.push(key);
         }
       });

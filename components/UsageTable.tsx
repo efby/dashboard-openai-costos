@@ -291,9 +291,15 @@ export default function UsageTable({ records }: UsageTableProps) {
               
               // Verificar si hay campos null en respuesta_busqueda (puede ser objeto o array)
               // NOTA: Ignora el campo "validador" en el cálculo
+              // NOTA: Array vacío [] se trata como dato vacío (100% crítico)
               const checkForNulls = (data: any): { hasNulls: boolean; nullFields: string[]; totalFields: number; percentage: number; isCritical: boolean } => {
                 if (!data) return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
                 if (typeof data === 'string') return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
+                
+                // Array vacío [] = dato vacío (crítico)
+                if (Array.isArray(data) && data.length === 0) {
+                  return { hasNulls: true, nullFields: ['array vacío'], totalFields: 1, percentage: 100, isCritical: true };
+                }
                 
                 const nullFields: string[] = [];
                 let totalFields = 0;
@@ -305,7 +311,7 @@ export default function UsageTable({ records }: UsageTableProps) {
                       const entries = Object.entries(item).filter(([key]) => !ignoredFields.includes(key));
                       totalFields += entries.length;
                       entries.forEach(([key, value]) => {
-                        if (value === null || value === undefined || value === '') {
+                        if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
                           nullFields.push(`[${index}].${key}`);
                         }
                       });
@@ -315,7 +321,7 @@ export default function UsageTable({ records }: UsageTableProps) {
                   const entries = Object.entries(data).filter(([key]) => !ignoredFields.includes(key));
                   totalFields = entries.length;
                   entries.forEach(([key, value]) => {
-                    if (value === null || value === undefined || value === '') {
+                    if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
                       nullFields.push(key);
                     }
                   });

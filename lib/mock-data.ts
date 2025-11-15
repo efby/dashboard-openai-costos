@@ -219,6 +219,27 @@ export const mockUsageData: OpenAIUsage[] = [
       output_tokens_details: { reasoning_tokens: 0 },
       total_tokens: 19250
     }
+  },
+  {
+    id: "7h8i9j0k1l2m",
+    modelo_ai: "gpt-4o",
+    nombre: "carolina toha",
+    nombre_candidato: "Carolina Tohá Morales",
+    promt_utilizado: "Carolina Tohá historial político",
+    timestamp: "2025-11-11T08:30:00.000000Z",
+    tipoPolitico: "Ministra",
+    tipo_busqueda: "historial_cargos",
+    ultimoCargo: "Ministra del Interior",
+    input_promt: "Proporciona el historial completo de cargos políticos de Carolina Tohá Morales, incluyendo fechas, partidos y funciones desempeñadas.",
+    respuesta_busqueda: [],  // ⚠️ ARRAY VACÍO = 100% CRÍTICO
+    // Array vacío [] se detecta como dato vacío y se marca con 100% de criticidad
+    usage: {
+      input_tokens: 8500,
+      input_tokens_details: { cached_tokens: 0 },
+      output_tokens: 50,
+      output_tokens_details: { reasoning_tokens: 0 },
+      total_tokens: 8550
+    }
   }
 ];
 
