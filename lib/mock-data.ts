@@ -57,16 +57,18 @@ export const mockUsageData: OpenAIUsage[] = [
     ultimoCargo: "Presidente de la República",
     input_promt: "Resume los programas de gobierno de Michelle Bachelet, incluyendo políticas sociales, educación, salud y reformas estructurales.",
     respuesta_busqueda: {
-      periodo: null,       // 🚨 CRÍTICO: >50% nulls
+      periodo: null,       
       fuente: null,
       cargo: "Presidenta",
       partido: null,
-      validador: null,
+      validador: null,      // ℹ️ Este campo se IGNORA en el cálculo
       estado_revision: null,
       mostrar: false,
       año_inicio: null,
       año_fin: null
     },
+    // SIN ignorar validador: 7/9 = 78% crítico
+    // IGNORANDO validador: 6/8 = 75% crítico (sigue siendo crítico)
     usage: {
       input_tokens: 28900,
       input_tokens_details: { cached_tokens: 5000 },
@@ -93,13 +95,15 @@ export const mockUsageData: OpenAIUsage[] = [
           "https://es.wikipedia.org/wiki/Gabriel_Boric",
           "https://www.gob.cl/presidente/"
         ],
-        validador: "",  // ⚠️ Campo vacío
+        validador: "",  // ℹ️ Este campo se IGNORA en el cálculo
         cargo: "Presidente de la República",
         estado_revision: "xRevisar",
         mostrar: true,
         partido: "Convergencia Social"
       }
     ],
+    // SIN ignorar validador: 2/7 = 29% warning
+    // IGNORANDO validador: 1/6 = 17% warning (menos crítico)
     usage: {
       input_tokens: 8500,
       input_tokens_details: { cached_tokens: 0 },

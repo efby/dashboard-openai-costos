@@ -12,7 +12,7 @@ interface UsageTableProps {
 }
 
 export default function UsageTable({ records }: UsageTableProps) {
-  const [sortBy, setSortBy] = useState<'date' | 'cost'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'cost' | 'status'>('date');
   const [filterModel, setFilterModel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,6 +29,49 @@ export default function UsageTable({ records }: UsageTableProps) {
   const closeModal = () => {
     setIsModalOpen(false);
     setTimeout(() => setSelectedRecord(null), 200);
+  };
+
+  // Función auxiliar para calcular el estado de un registro (para ordenamiento)
+  const getRecordStatusPriority = (record: OpenAIUsage): number => {
+    if (!record.respuesta_busqueda) return 3; // Sin respuesta = prioridad baja
+    
+    // Calcular nulls (misma lógica que en el render)
+    const ignoredFields = ['validador'];
+    let nullCount = 0;
+    let totalFields = 0;
+    
+    const data = record.respuesta_busqueda;
+    if (typeof data === 'string') return 4; // String completo = prioridad más baja
+    
+    if (Array.isArray(data)) {
+      data.forEach((item) => {
+        if (item && typeof item === 'object') {
+          const entries = Object.entries(item).filter(([key]) => !ignoredFields.includes(key));
+          totalFields += entries.length;
+          entries.forEach(([, value]) => {
+            if (value === null || value === undefined || value === '') {
+              nullCount++;
+            }
+          });
+        }
+      });
+    } else if (typeof data === 'object') {
+      const entries = Object.entries(data).filter(([key]) => !ignoredFields.includes(key));
+      totalFields = entries.length;
+      entries.forEach(([, value]) => {
+        if (value === null || value === undefined || value === '') {
+          nullCount++;
+        }
+      });
+    }
+    
+    if (totalFields === 0) return 4; // Sin campos = OK
+    
+    const percentage = (nullCount / totalFields) * 100;
+    
+    if (percentage > 50) return 0; // Crítico = prioridad máxima
+    if (percentage > 0) return 1;  // Warning = prioridad media
+    return 4; // Completo = prioridad más baja
   };
 
   // Obtener modelos únicos para el filtro
@@ -53,10 +96,15 @@ export default function UsageTable({ records }: UsageTableProps) {
   const sortedRecords = [...filteredRecords].sort((a, b) => {
     if (sortBy === 'date') {
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    } else {
+    } else if (sortBy === 'cost') {
       const costA = calculateCost(a.modelo_ai, a.usage.input_tokens, a.usage.output_tokens).totalCost;
       const costB = calculateCost(b.modelo_ai, b.usage.input_tokens, b.usage.output_tokens).totalCost;
       return costB - costA;
+    } else {
+      // Ordenar por estado (crítico primero, luego warning, sin respuesta, completo)
+      const priorityA = getRecordStatusPriority(a);
+      const priorityB = getRecordStatusPriority(b);
+      return priorityA - priorityB;
     }
   });
 
@@ -138,11 +186,12 @@ export default function UsageTable({ records }: UsageTableProps) {
             </select>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'date' | 'cost')}
+              onChange={(e) => setSortBy(e.target.value as 'date' | 'cost' | 'status')}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="date">Ordenar por fecha</option>
               <option value="cost">Ordenar por costo</option>
+              <option value="status">Ordenar por estado (críticos primero)</option>
             </select>
           </div>
         </div>
@@ -237,17 +286,19 @@ export default function UsageTable({ records }: UsageTableProps) {
               const hasDetails = record.input_promt || record.respuesta_busqueda;
               
               // Verificar si hay campos null en respuesta_busqueda (puede ser objeto o array)
+              // NOTA: Ignora el campo "validador" en el cálculo
               const checkForNulls = (data: any): { hasNulls: boolean; nullFields: string[]; totalFields: number; percentage: number; isCritical: boolean } => {
                 if (!data) return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
                 if (typeof data === 'string') return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
                 
                 const nullFields: string[] = [];
                 let totalFields = 0;
+                const ignoredFields = ['validador']; // Campos que se ignoran en el cálculo
                 
                 if (Array.isArray(data)) {
                   data.forEach((item, index) => {
                     if (item && typeof item === 'object') {
-                      const entries = Object.entries(item);
+                      const entries = Object.entries(item).filter(([key]) => !ignoredFields.includes(key));
                       totalFields += entries.length;
                       entries.forEach(([key, value]) => {
                         if (value === null || value === undefined || value === '') {
@@ -257,7 +308,7 @@ export default function UsageTable({ records }: UsageTableProps) {
                     }
                   });
                 } else if (typeof data === 'object') {
-                  const entries = Object.entries(data);
+                  const entries = Object.entries(data).filter(([key]) => !ignoredFields.includes(key));
                   totalFields = entries.length;
                   entries.forEach(([key, value]) => {
                     if (value === null || value === undefined || value === '') {

@@ -33,11 +33,12 @@ export default function UsageDetailModal({ record, isOpen, onClose }: UsageDetai
 
     const nullFields: string[] = [];
     let totalFields = 0;
+    const ignoredFields = ['validador']; // Campos que se ignoran en el cálculo
 
     if (Array.isArray(data)) {
       data.forEach((item, index) => {
         if (item && typeof item === 'object') {
-          const entries = Object.entries(item);
+          const entries = Object.entries(item).filter(([key]) => !ignoredFields.includes(key));
           totalFields += entries.length;
           entries.forEach(([key, value]) => {
             if (value === null || value === undefined || value === '') {
@@ -47,7 +48,7 @@ export default function UsageDetailModal({ record, isOpen, onClose }: UsageDetai
         }
       });
     } else if (typeof data === 'object') {
-      const entries = Object.entries(data);
+      const entries = Object.entries(data).filter(([key]) => !ignoredFields.includes(key));
       totalFields = entries.length;
       entries.forEach(([key, value]) => {
         if (value === null || value === undefined || value === '') {
