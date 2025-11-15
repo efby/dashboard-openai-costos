@@ -14,6 +14,7 @@ interface UsageTableProps {
 export default function UsageTable({ records }: UsageTableProps) {
   const [sortBy, setSortBy] = useState<'date' | 'cost' | 'status'>('date');
   const [filterModel, setFilterModel] = useState<string>('all');
+  const [filterCritical, setFilterCritical] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRecord, setSelectedRecord] = useState<OpenAIUsage | null>(null);
@@ -90,6 +91,48 @@ export default function UsageTable({ records }: UsageTableProps) {
       const candidateType = (r.tipoPolitico || '').toLowerCase();
       const search = searchTerm.toLowerCase();
       return candidateName.includes(search) || candidateType.includes(search);
+    });
+  }
+
+  // Filtrar por criticidad (solo registros críticos)
+  if (filterCritical) {
+    filteredRecords = filteredRecords.filter(r => {
+      const data = r.respuesta_busqueda;
+      if (!data) return false;
+      if (typeof data === 'string') return false;
+      
+      // Array vacío = crítico
+      if (Array.isArray(data) && data.length === 0) return true;
+      
+      const ignoredFields = ['validador'];
+      let nullCount = 0;
+      let totalFields = 0;
+      
+      if (Array.isArray(data)) {
+        data.forEach((item) => {
+          if (item && typeof item === 'object') {
+            const entries = Object.entries(item).filter(([key]) => !ignoredFields.includes(key));
+            totalFields += entries.length;
+            entries.forEach(([, value]) => {
+              if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+                nullCount++;
+              }
+            });
+          }
+        });
+      } else if (typeof data === 'object') {
+        const entries = Object.entries(data).filter(([key]) => !ignoredFields.includes(key));
+        totalFields = entries.length;
+        entries.forEach(([, value]) => {
+          if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+            nullCount++;
+          }
+        });
+      }
+      
+      if (totalFields === 0) return false;
+      const percentage = (nullCount / totalFields) * 100;
+      return percentage > 50; // Crítico = >50%
     });
   }
 
@@ -194,11 +237,30 @@ export default function UsageTable({ records }: UsageTableProps) {
               <option value="cost">Ordenar por costo</option>
               <option value="status">Ordenar por estado (críticos primero)</option>
             </select>
+            
+            {/* Filtro de críticos */}
+            <button
+              onClick={() => {
+                setFilterCritical(!filterCritical);
+                setCurrentPage(1);
+              }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                filterCritical
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+              title={filterCritical ? 'Mostrando solo críticos (click para ver todos)' : 'Click para mostrar solo críticos'}
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {filterCritical ? 'Solo Críticos' : 'Filtrar Críticos'}
+            </button>
           </div>
         </div>
 
         {/* Indicador de filtros activos */}
-        {(searchTerm || filterModel !== 'all') && (
+        {(searchTerm || filterModel !== 'all' || filterCritical) && (
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-xs text-gray-500 dark:text-gray-400">Filtros activos:</span>
             {searchTerm && (
@@ -229,10 +291,25 @@ export default function UsageTable({ records }: UsageTableProps) {
                 </button>
               </span>
             )}
+            {filterCritical && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full text-xs font-medium">
+                🚨 Solo críticos (&gt;50% null)
+                <button
+                  onClick={() => {
+                    setFilterCritical(false);
+                    setCurrentPage(1);
+                  }}
+                  className="hover:text-red-600 dark:hover:text-red-100"
+                >
+                  ×
+                </button>
+              </span>
+            )}
             <button
               onClick={() => {
                 setSearchTerm('');
                 setFilterModel('all');
+                setFilterCritical(false);
                 setCurrentPage(1);
               }}
               className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
