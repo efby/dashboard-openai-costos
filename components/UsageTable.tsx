@@ -361,37 +361,31 @@ export default function UsageTable({ records }: UsageTableProps) {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                <span className="sr-only">Expandir</span>
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="w-20 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Estado
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="w-28 px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Fecha
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Candidato
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="w-32 px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Tipo
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Último Cargo
+              <th className="w-32 px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Cargo
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="w-28 px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Modelo
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Tipo Búsqueda
+              <th className="w-32 px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Búsqueda
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Tokens In
+              <th className="w-20 px-2 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Tokens
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Tokens Out
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="w-20 px-2 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Costo
               </th>
             </tr>
@@ -476,32 +470,11 @@ export default function UsageTable({ records }: UsageTableProps) {
 
               return (
                   <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
-                    {/* Botón ver detalles */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {hasDetails && (
-                        <button
-                          onClick={() => openModal(record)}
-                          className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title="Ver detalles de prompt y respuesta"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                      )}
-                    </td>
-                    
                     {/* Estado de la respuesta */}
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <td className="px-2 py-2 whitespace-nowrap text-center">
                       <button
                         onClick={() => hasDetails && openModal(record)}
-                        className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors
+                        className={`inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium transition-colors
                           ${status.color === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 cursor-pointer' : ''}
                           ${status.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800 cursor-pointer' : ''}
                           ${status.color === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 cursor-pointer' : ''}
@@ -510,56 +483,63 @@ export default function UsageTable({ records }: UsageTableProps) {
                         disabled={!hasDetails}
                         title={
                           status.type === 'critical' 
-                            ? `🚨 CRÍTICO: ${responseStatus.percentage}% de campos vacíos (${responseStatus.nullFields.length}/${responseStatus.totalFields}). Click para ver detalles.`
+                            ? `🚨 CRÍTICO: ${responseStatus.percentage}% vacío (${responseStatus.nullFields.length}/${responseStatus.totalFields})`
                             : status.type === 'warning'
-                            ? `⚠️ ${responseStatus.percentage}% de campos vacíos (${responseStatus.nullFields.length}/${responseStatus.totalFields}). Click para ver detalles.`
+                            ? `⚠️ ${responseStatus.percentage}% vacío (${responseStatus.nullFields.length}/${responseStatus.totalFields})`
                             : status.type === 'success'
-                            ? '✓ Todos los campos completos. Click para ver detalles.'
+                            ? '✓ Completo'
                             : 'Sin respuesta'
                         }
                       >
-                        <span>{status.icon}</span>
+                        <span className="text-[10px]">{status.icon}</span>
                         {(status.type === 'critical' || status.type === 'warning') && (
-                          <span className="font-semibold">{responseStatus.percentage}%</span>
+                          <span className="font-semibold text-[10px]">{responseStatus.percentage}%</span>
                         )}
                       </button>
                     </td>
                     
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      {format(parseISO(record.timestamp), "dd/MM/yyyy HH:mm", { locale: es })}
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-300">
+                      <div className="flex flex-col">
+                        <span>{format(parseISO(record.timestamp), "dd/MM/yy", { locale: es })}</span>
+                        <span className="text-[10px] text-gray-500">{format(parseISO(record.timestamp), "HH:mm", { locale: es })}</span>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
-                      {record.nombre_candidato || record.nombre}
+                    <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-300">
+                      <div className="max-w-[200px] truncate" title={record.nombre_candidato || record.nombre}>
+                        {record.nombre_candidato || record.nombre}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs">
-                        {record.tipoPolitico || 'N/A'}
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-300">
+                      <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-[10px]" title={record.tipoPolitico}>
+                        {(record.tipoPolitico || 'N/A').substring(0, 15)}{(record.tipoPolitico || '').length > 15 ? '...' : ''}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
+                    <td className="px-2 py-2 text-xs text-gray-900 dark:text-gray-300">
                       {record.ultimoCargo ? (
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs">
+                        <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-[10px] inline-block max-w-full truncate" title={record.ultimoCargo}>
                           {record.ultimoCargo}
                         </span>
                       ) : (
-                        <span className="text-gray-400 dark:text-gray-500 text-xs italic">Sin cargo</span>
+                        <span className="text-gray-400 dark:text-gray-500 text-[10px] italic">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
-                        {record.modelo_ai}
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-300">
+                      <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-[10px]" title={record.modelo_ai}>
+                        {record.modelo_ai.replace('gpt-', '').substring(0, 10)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      {record.tipo_busqueda}
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-300">
+                      <div className="max-w-[120px] truncate text-[10px]" title={record.tipo_busqueda}>
+                        {record.tipo_busqueda.replace('_', ' ')}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
-                      {record.usage.input_tokens.toLocaleString()}
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-900 dark:text-gray-300" title={`In: ${record.usage.input_tokens.toLocaleString()} | Out: ${record.usage.output_tokens.toLocaleString()}`}>
+                      <div className="flex flex-col text-[10px]">
+                        <span className="text-gray-600 dark:text-gray-400">{(record.usage.input_tokens / 1000).toFixed(1)}k</span>
+                        <span className="text-gray-500 dark:text-gray-500">{(record.usage.output_tokens / 1000).toFixed(1)}k</span>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
-                      {record.usage.output_tokens.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-gray-300">
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-medium text-gray-900 dark:text-gray-300">
                       {formatCost(cost.totalCost)}
                     </td>
                   </tr>
