@@ -340,6 +340,9 @@ export default function UsageTable({ records }: UsageTableProps) {
                 Tipo
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Último Cargo
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Modelo
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -495,6 +498,15 @@ export default function UsageTable({ records }: UsageTableProps) {
                       <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs">
                         {record.tipoPolitico || 'N/A'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
+                      {record.ultimoCargo ? (
+                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs">
+                          {record.ultimoCargo}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500 text-xs italic">Sin cargo</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
