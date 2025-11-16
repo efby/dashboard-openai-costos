@@ -222,6 +222,7 @@ export default function Home() {
           <CostBySearchTypeChart 
             data={stats.costBySearchType}
             requestsByType={stats.requestsBySearchType}
+            records={records}
           />
         </div>
 
