@@ -402,7 +402,7 @@ export default function UsageTable({ records }: UsageTableProps) {
               
               // Verificar si hay campos null en respuesta_busqueda (puede ser objeto o array)
               // NOTA: Ignora el campo "validador" en el cálculo
-              // NOTA: Array vacío [] se trata como dato vacío (100% crítico)
+              // NOTA: Array vacío [] y objeto vacío {} se tratan como dato vacío (100% crítico)
               const checkForNulls = (data: any): { hasNulls: boolean; nullFields: string[]; totalFields: number; percentage: number; isCritical: boolean } => {
                 if (!data) return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
                 if (typeof data === 'string') return { hasNulls: false, nullFields: [], totalFields: 0, percentage: 0, isCritical: false };
@@ -410,6 +410,11 @@ export default function UsageTable({ records }: UsageTableProps) {
                 // Array vacío [] = dato vacío (crítico)
                 if (Array.isArray(data) && data.length === 0) {
                   return { hasNulls: true, nullFields: ['array vacío'], totalFields: 1, percentage: 100, isCritical: true };
+                }
+                
+                // Objeto vacío {} = dato vacío (crítico)
+                if (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0) {
+                  return { hasNulls: true, nullFields: ['objeto vacío'], totalFields: 1, percentage: 100, isCritical: true };
                 }
                 
                 const nullFields: string[] = [];

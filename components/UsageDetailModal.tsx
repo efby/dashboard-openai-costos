@@ -27,6 +27,9 @@ export default function UsageDetailModal({ record, isOpen, onClose }: UsageDetai
       if (data.length === 0) return 'array vacío (⚠️ crítico)';
       return `array (${data.length} ${data.length === 1 ? 'elemento' : 'elementos'})`;
     }
+    if (typeof data === 'object' && Object.keys(data).length === 0) {
+      return 'objeto vacío (⚠️ crítico)';
+    }
     return 'objeto';
   };
 
@@ -37,6 +40,11 @@ export default function UsageDetailModal({ record, isOpen, onClose }: UsageDetai
     // Array vacío [] = dato vacío (crítico)
     if (Array.isArray(data) && data.length === 0) {
       return { hasNulls: true, nullFields: ['array vacío'], totalFields: 1, percentage: 100, isCritical: true };
+    }
+
+    // Objeto vacío {} = dato vacío (crítico)
+    if (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0) {
+      return { hasNulls: true, nullFields: ['objeto vacío'], totalFields: 1, percentage: 100, isCritical: true };
     }
 
     const nullFields: string[] = [];
