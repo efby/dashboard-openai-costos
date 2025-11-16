@@ -72,18 +72,18 @@ export default function CostBySearchTypeChart({ data, requestsByType, records }:
   
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const totalCost = payload.reduce((sum: number, entry: any) => sum + entry.value, 0);
+      const totalCost = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0);
       
       return (
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          <p className="font-semibold text-gray-900 dark:text-white mb-2">{label}</p>
+          <p className="font-semibold text-gray-900 dark:text-white mb-2">{label || 'N/A'}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            Costo Total: <span className="font-semibold text-blue-600">${totalCost.toFixed(4)}</span>
+            Costo Total: <span className="font-semibold text-blue-600">${(totalCost || 0).toFixed(4)}</span>
           </p>
           <div className="space-y-1">
             {payload.filter((entry: any) => entry.value > 0).map((entry: any, index: number) => (
               <p key={index} className="text-xs text-gray-600 dark:text-gray-400">
-                <span style={{ color: entry.color }} className="font-semibold">{entry.name}:</span> ${entry.value.toFixed(4)}
+                <span style={{ color: entry.color }} className="font-semibold">{entry.name || 'N/A'}:</span> ${(entry.value || 0).toFixed(4)}
               </p>
             ))}
           </div>
@@ -93,6 +93,20 @@ export default function CostBySearchTypeChart({ data, requestsByType, records }:
     return null;
   };
 
+  // Si no hay datos, mostrar mensaje
+  if (chartData.length === 0 || records.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Análisis por Tipo de Búsqueda
+        </h3>
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          No hay datos disponibles para mostrar
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -100,14 +114,16 @@ export default function CostBySearchTypeChart({ data, requestsByType, records }:
       </h3>
       
       {/* Resumen */}
-      <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Total de tipos: <span className="font-semibold text-gray-900 dark:text-white">{chartData.length}</span>
-        </p>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Más costoso: <span className="font-semibold text-blue-600">{chartData[0]?.tipo}</span> (${chartData[0]?.costo.toFixed(4)})
-        </p>
-      </div>
+      {chartData.length > 0 && (
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Total de tipos: <span className="font-semibold text-gray-900 dark:text-white">{chartData.length}</span>
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Más costoso: <span className="font-semibold text-blue-600">{chartData[0]?.tipo || 'N/A'}</span> (${chartData[0]?.costoTotal?.toFixed(4) || '0.0000'})
+          </p>
+        </div>
+      )}
 
       <ResponsiveContainer width="100%" height={350}>
         <BarChart data={chartData}>
