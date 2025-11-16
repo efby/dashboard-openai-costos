@@ -96,7 +96,7 @@ export default function UsageTable({ records }: UsageTableProps) {
   // Filtrar por búsqueda de texto (nombre de candidato y tipo político)
   if (searchTerm.trim() !== '') {
     filteredRecords = filteredRecords.filter(r => {
-      const candidateName = (r.nombre_candidato || r.nombre).toLowerCase();
+      const candidateName = (r.nombre_candidato || r.nombre || '').toLowerCase();
       const candidateType = (r.tipoPolitico || '').toLowerCase();
       const search = searchTerm.toLowerCase();
       return candidateName.includes(search) || candidateType.includes(search);

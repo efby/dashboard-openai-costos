@@ -75,6 +75,12 @@ export function calculateCost(
   inputTokens: number,
   outputTokens: number
 ): CostCalculation {
+  // Validar que modelName no sea null o undefined
+  if (!modelName) {
+    console.warn('Modelo no especificado, usando precios de GPT-4 por defecto');
+    modelName = 'gpt-4';
+  }
+
   // Buscar el precio del modelo (intentar match exacto primero)
   let pricing: [number, number] | undefined = MODEL_PRICING[modelName];
   
@@ -117,6 +123,11 @@ export function formatCost(cost: number): string {
  * Obtiene información de precios para un modelo
  */
 export function getModelPricing(modelName: string): { input: number; output: number } | null {
+  // Validar que modelName no sea null o undefined
+  if (!modelName) {
+    return null;
+  }
+
   let pricing: [number, number] | undefined = MODEL_PRICING[modelName];
   
   if (!pricing) {

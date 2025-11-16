@@ -31,7 +31,7 @@ export default function TemporalAnalysisChart({ dailyCosts, requestsByDay }: Tem
   // Ordenar por día de la semana
   const dayOrder = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
   weekdayChartData.sort((a, b) => 
-    dayOrder.indexOf(a.diaCompleto.toLowerCase()) - dayOrder.indexOf(b.diaCompleto.toLowerCase())
+    dayOrder.indexOf((a.diaCompleto || '').toLowerCase()) - dayOrder.indexOf((b.diaCompleto || '').toLowerCase())
   );
 
   // Datos de la última semana
