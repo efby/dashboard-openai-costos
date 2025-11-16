@@ -170,7 +170,7 @@ export default function Home() {
           />
           <StatCard
             title="Total Consultas"
-            value={stats.totalRequests.toLocaleString()}
+            value={(stats.totalRequests || 0).toLocaleString()}
             subtitle="Llamadas a la API"
             icon={
               <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,8 +180,8 @@ export default function Home() {
           />
           <StatCard
             title="Tokens Totales"
-            value={stats.totalTokens.toLocaleString()}
-            subtitle={`${stats.totalInputTokens.toLocaleString()} entrada / ${stats.totalOutputTokens.toLocaleString()} salida`}
+            value={(stats.totalTokens || 0).toLocaleString()}
+            subtitle={`${(stats.totalInputTokens || 0).toLocaleString()} entrada / ${(stats.totalOutputTokens || 0).toLocaleString()} salida`}
             icon={
               <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -190,7 +190,7 @@ export default function Home() {
           />
           <StatCard
             title="Costo Promedio"
-            value={formatCost(stats.totalCost / stats.totalRequests)}
+            value={formatCost((stats.totalRequests && stats.totalRequests > 0) ? (stats.totalCost / stats.totalRequests) : 0)}
             subtitle="Por consulta"
             icon={
               <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

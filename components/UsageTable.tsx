@@ -394,8 +394,8 @@ export default function UsageTable({ records }: UsageTableProps) {
             {paginatedRecords.map((record) => {
               const cost = calculateCost(
                 record.modelo_ai,
-                record.usage.input_tokens,
-                record.usage.output_tokens
+                record.usage?.input_tokens || 0,
+                record.usage?.output_tokens || 0
               );
               
               const hasDetails = record.input_promt || record.respuesta_busqueda;
@@ -524,19 +524,19 @@ export default function UsageTable({ records }: UsageTableProps) {
                       )}
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-300">
-                      <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-[10px]" title={record.modelo_ai}>
-                        {record.modelo_ai.replace('gpt-', '').substring(0, 10)}
+                      <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-[10px]" title={record.modelo_ai || 'N/A'}>
+                        {(record.modelo_ai || 'N/A').replace('gpt-', '').substring(0, 10)}
                       </span>
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-300">
-                      <div className="max-w-[120px] truncate text-[10px]" title={record.tipo_busqueda}>
-                        {record.tipo_busqueda.replace('_', ' ')}
+                      <div className="max-w-[120px] truncate text-[10px]" title={record.tipo_busqueda || 'N/A'}>
+                        {(record.tipo_busqueda || 'N/A').replace('_', ' ')}
                       </div>
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-900 dark:text-gray-300" title={`In: ${record.usage.input_tokens.toLocaleString()} | Out: ${record.usage.output_tokens.toLocaleString()}`}>
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-900 dark:text-gray-300" title={`In: ${(record.usage?.input_tokens || 0).toLocaleString()} | Out: ${(record.usage?.output_tokens || 0).toLocaleString()}`}>
                       <div className="flex flex-col text-[10px]">
-                        <span className="text-gray-600 dark:text-gray-400">{(record.usage.input_tokens / 1000).toFixed(1)}k</span>
-                        <span className="text-gray-500 dark:text-gray-500">{(record.usage.output_tokens / 1000).toFixed(1)}k</span>
+                        <span className="text-gray-600 dark:text-gray-400">{((record.usage?.input_tokens || 0) / 1000).toFixed(1)}k</span>
+                        <span className="text-gray-500 dark:text-gray-500">{((record.usage?.output_tokens || 0) / 1000).toFixed(1)}k</span>
                       </div>
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-medium text-gray-900 dark:text-gray-300">

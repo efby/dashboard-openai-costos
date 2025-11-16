@@ -81,6 +81,10 @@ export function calculateCost(
     modelName = 'gpt-4';
   }
 
+  // Validar tokens (usar 0 si son null, undefined o NaN)
+  const safeInputTokens = Number(inputTokens) || 0;
+  const safeOutputTokens = Number(outputTokens) || 0;
+
   // Buscar el precio del modelo (intentar match exacto primero)
   let pricing: [number, number] | undefined = MODEL_PRICING[modelName];
   
@@ -101,14 +105,14 @@ export function calculateCost(
   const [inputPricePerMillion, outputPricePerMillion] = pricing;
   
   // Calcular costos (tokens / 1,000,000 * precio por millón)
-  const inputCost = (inputTokens / 1_000_000) * inputPricePerMillion;
-  const outputCost = (outputTokens / 1_000_000) * outputPricePerMillion;
+  const inputCost = (safeInputTokens / 1_000_000) * inputPricePerMillion;
+  const outputCost = (safeOutputTokens / 1_000_000) * outputPricePerMillion;
   const totalCost = inputCost + outputCost;
   
   return {
-    inputCost: Number(inputCost.toFixed(6)),
-    outputCost: Number(outputCost.toFixed(6)),
-    totalCost: Number(totalCost.toFixed(6)),
+    inputCost: Number((inputCost || 0).toFixed(6)),
+    outputCost: Number((outputCost || 0).toFixed(6)),
+    totalCost: Number((totalCost || 0).toFixed(6)),
   };
 }
 
@@ -116,7 +120,7 @@ export function calculateCost(
  * Formatea un costo en dólares
  */
 export function formatCost(cost: number): string {
-  return `$${cost.toFixed(4)}`;
+  return `$${(cost || 0).toFixed(4)}`;
 }
 
 /**
