@@ -23,27 +23,29 @@ export function calculateDashboardStats(records: OpenAIUsage[]): DashboardStats 
   records.forEach(record => {
     const { inputCost, outputCost, totalCost: recordCost } = calculateCost(
       record.modelo_ai,
-      record.usage.input_tokens,
-      record.usage.output_tokens
+      record.usage?.input_tokens || 0,
+      record.usage?.output_tokens || 0
     );
     
     totalCost += recordCost;
-    totalInputTokens += record.usage.input_tokens;
-    totalOutputTokens += record.usage.output_tokens;
-    totalTokens += record.usage.total_tokens;
+    totalInputTokens += record.usage?.input_tokens || 0;
+    totalOutputTokens += record.usage?.output_tokens || 0;
+    totalTokens += record.usage?.total_tokens || 0;
     
     // Por modelo
-    costByModel[record.modelo_ai] = (costByModel[record.modelo_ai] || 0) + recordCost;
-    requestsByModel[record.modelo_ai] = (requestsByModel[record.modelo_ai] || 0) + 1;
+    const modelKey = record.modelo_ai || 'unknown';
+    costByModel[modelKey] = (costByModel[modelKey] || 0) + recordCost;
+    requestsByModel[modelKey] = (requestsByModel[modelKey] || 0) + 1;
     
     // Por candidato
-    const candidate = record.nombre_candidato || record.nombre;
+    const candidate = record.nombre_candidato || record.nombre || 'unknown';
     costByCandidate[candidate] = (costByCandidate[candidate] || 0) + recordCost;
     requestsByCandidate[candidate] = (requestsByCandidate[candidate] || 0) + 1;
     
     // Por tipo de búsqueda
-    costBySearchType[record.tipo_busqueda] = (costBySearchType[record.tipo_busqueda] || 0) + recordCost;
-    requestsBySearchType[record.tipo_busqueda] = (requestsBySearchType[record.tipo_busqueda] || 0) + 1;
+    const searchType = record.tipo_busqueda || 'unknown';
+    costBySearchType[searchType] = (costBySearchType[searchType] || 0) + recordCost;
+    requestsBySearchType[searchType] = (requestsBySearchType[searchType] || 0) + 1;
     
     // Por día
     try {
