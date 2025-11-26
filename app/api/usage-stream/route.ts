@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUsageRecords } from '@/lib/dynamodb';
-import { calculateDashboardStats, calculateIncrementalStats } from '@/lib/stats';
+import { calculateDashboardStats, calculateIncrementalStats, DashboardStats } from '@/lib/stats';
 import { mockUsageData, isDemoMode } from '@/lib/mock-data';
 import { checkPricingFreshness } from '@/lib/openai-pricing';
 import { gzip } from 'zlib';
@@ -147,7 +147,7 @@ export async function GET() {
             console.log(`[${streamInitTimestamp}] 🚀 Iniciando carga progresiva real de DynamoDB...`);
             
             // Estado para stats incrementales
-            let previousStats = null;
+            let previousStats: DashboardStats | null = null;
             let previousRecordsCount = 0;
             
             // Verificar precios de forma asíncrona en paralelo (no bloquea el stream)
