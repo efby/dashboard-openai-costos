@@ -2,6 +2,146 @@ import { OpenAIUsage, DashboardStats } from '@/types/openai-usage';
 import { calculateCost } from './openai-pricing';
 import { format, parseISO } from 'date-fns';
 
+// Cache para memoización de cálculos costosos
+const dateFormatCache = new Map<string, string>();
+const costCache = new Map<string, number>();
+
+/**
+ * Formatea una fecha con memoización
+ */
+function formatDateCached(timestamp: string): string {
+  if (dateFormatCache.has(timestamp)) {
+    return dateFormatCache.get(timestamp)!;
+  }
+  
+  try {
+    const formatted = format(parseISO(timestamp), 'yyyy-MM-dd');
+    dateFormatCache.set(timestamp, formatted);
+    return formatted;
+  } catch (error) {
+    console.error('Error al parsear fecha:', timestamp);
+    return 'unknown';
+  }
+}
+
+/**
+ * Calcula el costo con memoización (basado en modelo + tokens)
+ */
+function calculateCostCached(
+  modelo: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const cacheKey = `${modelo}-${inputTokens}-${outputTokens}`;
+  
+  if (costCache.has(cacheKey)) {
+    return costCache.get(cacheKey)!;
+  }
+  
+  const result = calculateCost(modelo, inputTokens, outputTokens);
+  const totalCost = result.totalCost;
+  
+  // Cachear solo si el costo es razonable (evitar cachear valores anormales)
+  if (totalCost < 1000 && totalCost >= 0) {
+    costCache.set(cacheKey, totalCost);
+  }
+  
+  return totalCost;
+}
+
+/**
+ * Calcula las estadísticas del dashboard de forma incremental
+ * Solo procesa los nuevos registros y actualiza las estadísticas existentes
+ */
+export function calculateIncrementalStats(
+  previousStats: DashboardStats | null,
+  newRecords: OpenAIUsage[]
+): DashboardStats {
+  // Si no hay stats previas, calcular desde cero
+  if (!previousStats || newRecords.length === 0) {
+    return calculateDashboardStats(newRecords);
+  }
+  
+  // Si no hay nuevos registros, retornar stats previas
+  if (newRecords.length === 0) {
+    return previousStats;
+  }
+  
+  // Calcular stats solo de los nuevos registros
+  const newStats = calculateDashboardStats(newRecords);
+  
+  // Combinar con stats previas
+  return {
+    totalCost: Number((previousStats.totalCost + newStats.totalCost).toFixed(4)),
+    totalRequests: previousStats.totalRequests + newStats.totalRequests,
+    totalInputTokens: previousStats.totalInputTokens + newStats.totalInputTokens,
+    totalOutputTokens: previousStats.totalOutputTokens + newStats.totalOutputTokens,
+    totalTokens: previousStats.totalTokens + newStats.totalTokens,
+    
+    // Combinar objetos por modelo
+    costByModel: combineObjects(previousStats.costByModel, newStats.costByModel),
+    requestsByModel: combineObjects(previousStats.requestsByModel, newStats.requestsByModel),
+    
+    // Combinar objetos por candidato
+    costByCandidate: combineObjects(previousStats.costByCandidate, newStats.costByCandidate),
+    requestsByCandidate: combineObjects(previousStats.requestsByCandidate, newStats.requestsByCandidate),
+    
+    // Combinar objetos por tipo de búsqueda
+    costBySearchType: combineObjects(previousStats.costBySearchType, newStats.costBySearchType),
+    requestsBySearchType: combineObjects(previousStats.requestsBySearchType, newStats.requestsBySearchType),
+    
+    // Combinar arrays de costos diarios
+    dailyCosts: combineDailyCosts(previousStats.dailyCosts, newStats.dailyCosts),
+    requestsByDay: combineObjects(previousStats.requestsByDay, newStats.requestsByDay),
+  };
+}
+
+/**
+ * Combina dos objetos sumando los valores de las claves coincidentes
+ */
+function combineObjects(obj1: Record<string, number>, obj2: Record<string, number>): Record<string, number> {
+  const combined = { ...obj1 };
+  
+  Object.entries(obj2).forEach(([key, value]) => {
+    combined[key] = (combined[key] || 0) + value;
+  });
+  
+  return combined;
+}
+
+/**
+ * Combina dos arrays de costos diarios y los mantiene ordenados
+ */
+function combineDailyCosts(
+  previous: Array<{ date: string; cost: number }>,
+  newCosts: Array<{ date: string; cost: number }>
+): Array<{ date: string; cost: number }> {
+  const combinedMap: Record<string, number> = {};
+  
+  // Agregar costos previos
+  previous.forEach(({ date, cost }) => {
+    combinedMap[date] = (combinedMap[date] || 0) + cost;
+  });
+  
+  // Agregar nuevos costos
+  newCosts.forEach(({ date, cost }) => {
+    combinedMap[date] = (combinedMap[date] || 0) + cost;
+  });
+  
+  // Convertir a array y ordenar
+  return Object.entries(combinedMap)
+    .map(([date, cost]) => ({ date, cost }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Limpia los caches de memoización (útil para liberar memoria)
+ */
+export function clearStatsCache(): void {
+  dateFormatCache.clear();
+  costCache.clear();
+}
+
 /**
  * Calcula las estadísticas del dashboard a partir de los registros de uso
  */
@@ -21,7 +161,8 @@ export function calculateDashboardStats(records: OpenAIUsage[]): DashboardStats 
   const requestsByDay: Record<string, number> = {};
   
   records.forEach(record => {
-    const { inputCost, outputCost, totalCost: recordCost } = calculateCost(
+    // Usar función memoizada para calcular costo
+    const recordCost = calculateCostCached(
       record.modelo_ai,
       record.usage?.input_tokens || 0,
       record.usage?.output_tokens || 0
@@ -47,13 +188,11 @@ export function calculateDashboardStats(records: OpenAIUsage[]): DashboardStats 
     costBySearchType[searchType] = (costBySearchType[searchType] || 0) + recordCost;
     requestsBySearchType[searchType] = (requestsBySearchType[searchType] || 0) + 1;
     
-    // Por día
-    try {
-      const date = format(parseISO(record.timestamp), 'yyyy-MM-dd');
+    // Por día (usar función memoizada)
+    if (record.timestamp) {
+      const date = formatDateCached(record.timestamp);
       dailyCostsMap[date] = (dailyCostsMap[date] || 0) + recordCost;
       requestsByDay[date] = (requestsByDay[date] || 0) + 1;
-    } catch (error) {
-      console.error('Error al parsear fecha:', record.timestamp);
     }
   });
   

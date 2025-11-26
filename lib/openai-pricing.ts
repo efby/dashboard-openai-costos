@@ -6,9 +6,9 @@ import { CostCalculation } from '@/types/openai-usage';
  * OpenAI NO proporciona una API para consultar precios automáticamente.
  * Los precios deben actualizarse manualmente desde la página oficial.
  * 
- * 📅 ÚLTIMA ACTUALIZACIÓN: 15 Noviembre 2024
+ * 📅 ÚLTIMA ACTUALIZACIÓN: 26 Noviembre 2025
  * 🔗 FUENTE OFICIAL: https://openai.com/api/pricing/
- * 👤 ACTUALIZADO POR: Sistema inicial
+ * 👤 ACTUALIZADO POR: Optimización performance - agregado GPT-5.1
  * 
  * 🔄 FRECUENCIA RECOMENDADA: Verificar mensualmente
  * 📧 NOTIFICACIÓN: Configurar alerta de calendario para revisar precios
@@ -43,6 +43,9 @@ const MODEL_PRICING: Record<string, [number, number]> = {
   'gpt-4.1': [3.0, 12.0],
   'gpt-4.1-2025-04-14': [3.0, 12.0],
   
+  // GPT-5.1 (modelo experimental/futuro)
+  'gpt-5.1-2025-11-13': [2.5, 10.0], // Precios estimados basados en GPT-4o
+  
   // GPT-4 legacy models
   'gpt-4': [30.0, 60.0],
   'gpt-4-32k': [60.0, 120.0],
@@ -63,6 +66,9 @@ const MODEL_PRICING: Record<string, [number, number]> = {
   'o1-mini-2024-09-12': [3.0, 12.0],
 };
 
+// Cache para evitar warnings repetidos del mismo modelo
+const warnedModels = new Set<string>();
+
 /**
  * Calcula el costo de una llamada a la API de OpenAI
  * @param modelName - Nombre del modelo usado
@@ -77,7 +83,10 @@ export function calculateCost(
 ): CostCalculation {
   // Validar que modelName no sea null o undefined
   if (!modelName) {
-    console.warn('Modelo no especificado, usando precios de GPT-4 por defecto');
+    if (!warnedModels.has('undefined-model')) {
+      console.warn('⚠️ Modelo no especificado, usando precios de GPT-4 por defecto');
+      warnedModels.add('undefined-model');
+    }
     modelName = 'gpt-4';
   }
 
@@ -98,7 +107,11 @@ export function calculateCost(
   
   // Si aún no se encuentra, usar precio por defecto de GPT-4
   if (!pricing) {
-    console.warn(`Modelo no encontrado: ${modelName}, usando precios de GPT-4 por defecto`);
+    // Solo mostrar warning una vez por modelo para evitar spam en logs
+    if (!warnedModels.has(modelName)) {
+      console.warn(`⚠️ Modelo no encontrado: ${modelName}, usando precios de GPT-4 por defecto`);
+      warnedModels.add(modelName);
+    }
     pricing = MODEL_PRICING['gpt-4'] || [10.0, 30.0];
   }
   
@@ -117,10 +130,27 @@ export function calculateCost(
 }
 
 /**
- * Formatea un costo en dólares
+ * Formatea un costo en dólares con formato chileno (punto para miles, coma para decimales)
  */
 export function formatCost(cost: number): string {
-  return `$${(cost || 0).toFixed(4)}`;
+  const num = cost || 0;
+  // Separar parte entera y decimal
+  const parts = num.toFixed(4).split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts[1];
+  
+  // Formatear parte entera con puntos como separadores de miles
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  // Combinar con coma para decimales
+  return `$${formattedInteger},${decimalPart}`;
+}
+
+/**
+ * Formatea un número entero con formato chileno (punto para miles)
+ */
+export function formatNumber(num: number): string {
+  return (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 /**
@@ -153,9 +183,9 @@ export function getModelPricing(modelName: string): { input: number; output: num
  * Metadata de precios
  */
 export const PRICING_METADATA = {
-  lastUpdate: '2024-11-15',
+  lastUpdate: '2025-11-26',
   source: 'https://openai.com/api/pricing/',
-  updatedBy: 'Sistema inicial',
+  updatedBy: 'Optimización performance - agregado GPT-5.1',
   recommendedCheckFrequency: 'monthly'
 };
 
