@@ -659,7 +659,7 @@ export default function Home() {
             }
           />
           <StatCard
-            title="Costo %"
+            title="Costo promedio"
             value={formatCost((stats.totalRequests && stats.totalRequests > 0) ? (stats.totalCost / stats.totalRequests) : 0)}
             subtitle="Por consulta"
             icon={
