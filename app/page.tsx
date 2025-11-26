@@ -427,7 +427,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
 
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow">
+      <header className="bg-white dark:bg-gray-800 shadow relative z-[100]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -460,7 +460,7 @@ export default function Home() {
                   </span>
                 )}
                 {!(!loading && loadingProgress === 100) && loadingProgress > 0 && (
-                  <span className="text-xs flex items-center gap-3 text-blue-600 dark:text-blue-400 transition-all duration-300">
+                  <span className="text-xs flex items-center gap-3 text-blue-600 dark:text-blue-400 transition-all duration-300 relative z-[101]">
                     {/* Indicador circular con progreso */}
                     <div className="relative w-4 h-4">
                       <svg className="w-4 h-4 transform -rotate-90" viewBox="0 0 24 24">
@@ -487,13 +487,10 @@ export default function Home() {
                         />
                       </svg>
                     </div>
-                    <span className="transition-all duration-300 flex items-center gap-2">
+                    <span className="transition-all duration-300 flex items-center gap-2 relative z-[101]">
                       <span>Cargando datos...</span>
                       <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">
                         {loadingProgress}%
-                      </span>
-                      <span className="text-blue-500 dark:text-blue-400 text-xs">
-                        (10 segmentos paralelos)
                       </span>
                     </span>
                   </span>
@@ -559,14 +556,6 @@ export default function Home() {
                   animation: loadingProgress > 5 && loadingProgress < 98 ? 'shimmer 2s ease-in-out infinite' : 'none'
                 }}
               ></div>
-              {/* Indicador de segmentos (10 divisiones) */}
-              {Array.from({ length: 9 }, (_, i) => (
-                <div
-                  key={i}
-                  className="absolute top-0 h-full w-px bg-white/20"
-                  style={{ left: `${((i + 1) * 10)}%` }}
-                />
-              ))}
             </div>
           </div>
         )}
@@ -630,31 +619,11 @@ export default function Home() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8 relative">
           {!(!loading && loadingProgress === 100) && loadingProgress > 0 && (
-            <div className="absolute top-0 right-0 z-10 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-2 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-3 transition-all duration-500 animate-in slide-in-from-right-2 shadow-lg">
-              {/* Indicador visual de 10 segmentos */}
-              <div className="flex gap-0.5">
-                {Array.from({ length: 10 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`w-1 h-3 rounded-full transition-all duration-300 ${
-                      loadingProgress > (i * 10) 
-                        ? 'bg-blue-500 dark:bg-blue-400 shadow-sm' 
-                        : 'bg-blue-200 dark:bg-blue-700'
-                    }`}
-                    style={{
-                      transform: loadingProgress > (i * 10) ? 'scaleY(1)' : 'scaleY(0.6)',
-                      transitionDelay: `${i * 50}ms`
-                    }}
-                  />
-                ))}
-              </div>
-              <span className="transition-all duration-300 font-medium">
+            <div className="absolute -top-8 right-0 z-[200] bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-2 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-3 transition-all duration-500 animate-in slide-in-from-right-2 shadow-lg">
+              <span className="transition-all duration-300 font-medium relative z-[201]">
                 Cargando datos... 
                 <span className="font-mono text-blue-600 dark:text-blue-400 ml-1">
                   {loadingProgress}%
-                </span>
-                <span className="text-blue-500 dark:text-blue-400 ml-1 text-xs">
-                  (10 segmentos)
                 </span>
               </span>
             </div>
