@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUsageRecords } from '@/lib/dynamodb';
-import { calculateDashboardStats, calculateIncrementalStats, DashboardStats } from '@/lib/stats';
+import { calculateDashboardStats, calculateIncrementalStats } from '@/lib/stats';
+import { DashboardStats } from '@/types/openai-usage';
 import { mockUsageData, isDemoMode } from '@/lib/mock-data';
 import { checkPricingFreshness } from '@/lib/openai-pricing';
 import { gzip } from 'zlib';
@@ -128,7 +129,18 @@ export async function GET() {
           try {
             // ⚡ ENVIAR CHUNK INICIAL INMEDIATAMENTE (antes de cualquier operación pesada)
             const chunkInitStart = Date.now();
-            const initialChunk = {
+            const initialChunk: {
+              success: boolean;
+              demo: boolean;
+              progress: number;
+              isComplete: boolean;
+              data: {
+                stats: DashboardStats | null;
+                newRecords: any[];
+                totalRecords: number;
+                expectedTotal: number;
+              };
+            } = {
               success: true,
               demo: false,
               progress: 0,
@@ -151,7 +163,7 @@ export async function GET() {
             let previousRecordsCount = 0;
             
             // Verificar precios de forma asíncrona en paralelo (no bloquea el stream)
-            const pricingCheckPromise = Promise.resolve().then(() => {
+            Promise.resolve().then(() => {
               const pricingCheckStart = Date.now();
               checkPricingFreshness();
               const pricingCheckTime = Date.now() - pricingCheckStart;
