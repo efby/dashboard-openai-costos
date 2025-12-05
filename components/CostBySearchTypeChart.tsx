@@ -24,6 +24,25 @@ const MODEL_COLORS: Record<string, string> = {
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
 
+/**
+ * Normaliza los tokens de la estructura usage para soportar ambos formatos
+ */
+function normalizeTokens(usage: any): { input: number; output: number; total: number } {
+  if (!usage) {
+    return { input: 0, output: 0, total: 0 };
+  }
+  
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0;
+  const totalTokens = usage.total_tokens ?? (inputTokens + outputTokens);
+  
+  return {
+    input: inputTokens,
+    output: outputTokens,
+    total: totalTokens
+  };
+}
+
 export default function CostBySearchTypeChart({ data, requestsByType, records }: CostBySearchTypeChartProps) {
   // Calcular costos por tipo de búsqueda y modelo
   const costByTypeAndModel: Record<string, Record<string, number>> = {};
@@ -32,7 +51,10 @@ export default function CostBySearchTypeChart({ data, requestsByType, records }:
   records.forEach(record => {
     const searchType = record.tipo_busqueda;
     const model = record.modelo_ai;
-    const cost = calculateCost(model, record.usage.input_tokens, record.usage.output_tokens).totalCost;
+    
+    // Normalizar tokens para soportar ambas estructuras
+    const tokens = normalizeTokens(record.usage);
+    const cost = calculateCost(model, tokens.input, tokens.output).totalCost;
     
     if (!costByTypeAndModel[searchType]) {
       costByTypeAndModel[searchType] = {};

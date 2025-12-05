@@ -11,6 +11,25 @@ interface UsageTableProps {
   records: OpenAIUsage[];
 }
 
+/**
+ * Normaliza los tokens de la estructura usage para soportar ambos formatos
+ */
+function normalizeTokens(usage: any): { input: number; output: number; total: number } {
+  if (!usage) {
+    return { input: 0, output: 0, total: 0 };
+  }
+  
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0;
+  const totalTokens = usage.total_tokens ?? (inputTokens + outputTokens);
+  
+  return {
+    input: inputTokens,
+    output: outputTokens,
+    total: totalTokens
+  };
+}
+
 export default function UsageTable({ records }: UsageTableProps) {
   const [sortBy, setSortBy] = useState<'date' | 'cost' | 'status'>('date');
   const [filterModel, setFilterModel] = useState<string>('all');
@@ -150,8 +169,11 @@ export default function UsageTable({ records }: UsageTableProps) {
     if (sortBy === 'date') {
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     } else if (sortBy === 'cost') {
-      const costA = calculateCost(a.modelo_ai, a.usage.input_tokens, a.usage.output_tokens).totalCost;
-      const costB = calculateCost(b.modelo_ai, b.usage.input_tokens, b.usage.output_tokens).totalCost;
+      // Normalizar tokens para soportar ambas estructuras
+      const tokensA = normalizeTokens(a.usage);
+      const tokensB = normalizeTokens(b.usage);
+      const costA = calculateCost(a.modelo_ai, tokensA.input, tokensA.output).totalCost;
+      const costB = calculateCost(b.modelo_ai, tokensB.input, tokensB.output).totalCost;
       return costB - costA;
     } else {
       // Ordenar por estado (crítico primero, luego warning, sin respuesta, completo)
@@ -392,10 +414,12 @@ export default function UsageTable({ records }: UsageTableProps) {
           </thead>
           <tbody className="bg-white dark:bg-gray-800">
             {paginatedRecords.map((record) => {
+              // Normalizar tokens para soportar ambas estructuras
+              const tokens = normalizeTokens(record.usage);
               const cost = calculateCost(
                 record.modelo_ai,
-                record.usage?.input_tokens || 0,
-                record.usage?.output_tokens || 0
+                tokens.input,
+                tokens.output
               );
               
               const hasDetails = record.input_promt || record.respuesta_busqueda;
@@ -538,10 +562,10 @@ export default function UsageTable({ records }: UsageTableProps) {
                         {(record.tipo_busqueda || 'N/A').replace('_', ' ')}
                       </div>
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-900 dark:text-gray-300" title={`In: ${(record.usage?.input_tokens || 0).toLocaleString()} | Out: ${(record.usage?.output_tokens || 0).toLocaleString()}`}>
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-900 dark:text-gray-300" title={`In: ${tokens.input.toLocaleString()} | Out: ${tokens.output.toLocaleString()}`}>
                       <div className="flex flex-col text-[10px]">
-                        <span className="text-gray-600 dark:text-gray-400">{((record.usage?.input_tokens || 0) / 1000).toFixed(1)}k</span>
-                        <span className="text-gray-500 dark:text-gray-500">{((record.usage?.output_tokens || 0) / 1000).toFixed(1)}k</span>
+                        <span className="text-gray-600 dark:text-gray-400">{(tokens.input / 1000).toFixed(1)}k</span>
+                        <span className="text-gray-500 dark:text-gray-500">{(tokens.output / 1000).toFixed(1)}k</span>
                       </div>
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-medium text-gray-900 dark:text-gray-300">
