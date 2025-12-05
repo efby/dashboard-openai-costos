@@ -34,6 +34,7 @@ export default function Home() {
     start: subDays(new Date(), 30),
     end: new Date()
   });
+  const [isDateFilterActive, setIsDateFilterActive] = useState(false); // Filtro de fecha desactivado por defecto
   
   const [showSettings, setShowSettings] = useState(false);
   
@@ -65,13 +66,19 @@ export default function Home() {
     }
   }, []);
 
-  // Memoized filtered records based on date range
-  const filteredRecords = useMemo(() => 
-    records.filter(record => {
+  // Memoized filtered records based on date range (solo si el filtro está activo)
+  const filteredRecords = useMemo(() => {
+    // Si el filtro de fecha NO está activo, mostrar TODOS los registros
+    if (!isDateFilterActive) {
+      return records;
+    }
+    
+    // Si está activo, aplicar el filtro de fecha
+    return records.filter(record => {
       const recordDate = parseISO(record.timestamp);
       return recordDate >= dateRange.start && recordDate <= dateRange.end;
-    }), [records, dateRange]
-  );
+    });
+  }, [records, dateRange, isDateFilterActive]);
 
   // Memoized fetch function with progressive loading
   const fetchData = useCallback(async (forceFullReload = false) => {
@@ -766,20 +773,46 @@ export default function Home() {
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Filtro de Fechas</h3>
-                <div className="flex items-center gap-2 text-xs">
-                  <input
-                    type="date"
-                    value={dateRange.start.toISOString().split('T')[0]}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, start: new Date(e.target.value) }))}
-                    className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                  <span className="text-gray-500">a</span>
-                  <input
-                    type="date"
-                    value={dateRange.end.toISOString().split('T')[0]}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, end: new Date(e.target.value) }))}
-                    className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isDateFilterActive}
+                      onChange={(e) => setIsDateFilterActive(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Activar filtro de fecha
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-2 text-xs">
+                    <input
+                      type="date"
+                      value={dateRange.start.toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        setDateRange(prev => ({ ...prev, start: new Date(e.target.value) }));
+                        setIsDateFilterActive(true); // Activar filtro automáticamente al cambiar fecha
+                      }}
+                      disabled={!isDateFilterActive}
+                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <span className="text-gray-500">a</span>
+                    <input
+                      type="date"
+                      value={dateRange.end.toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        setDateRange(prev => ({ ...prev, end: new Date(e.target.value) }));
+                        setIsDateFilterActive(true); // Activar filtro automáticamente al cambiar fecha
+                      }}
+                      disabled={!isDateFilterActive}
+                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                  {!isDateFilterActive && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Mostrando todos los registros (sin filtro de fecha)
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -907,7 +940,7 @@ export default function Home() {
               Registros Detallados
             </h2>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
                 <span>
                   Mostrando {filteredRecords.length} de {records.length} registros
                   {loading && loadingProgress > 0 && (
@@ -916,10 +949,15 @@ export default function Home() {
                     </span>
                   )}
                 </span>
+                {isDateFilterActive && (
+                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
+                    Filtro activo
+                  </span>
+                )}
                 {filteredRecords.length !== records.length && (!loading || loadingProgress === 100) && (
                   <button
-                    onClick={() => setDateRange({ start: subDays(new Date(), 365), end: new Date() })}
-                    className="ml-2 text-blue-500 hover:text-blue-600 underline"
+                    onClick={() => setIsDateFilterActive(false)}
+                    className="ml-1 text-blue-500 hover:text-blue-600 underline text-xs"
                   >
                     Ver todos
                   </button>
