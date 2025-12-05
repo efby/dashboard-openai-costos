@@ -13,8 +13,16 @@ const gzipAsync = promisify(gzip);
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Extraer parámetro de timestamp para carga incremental
+    const { searchParams } = new URL(request.url);
+    const sinceTimestamp = searchParams.get('since') || undefined;
+    
+    if (sinceTimestamp) {
+      console.log(`🔄 Carga incremental solicitada: registros posteriores a ${sinceTimestamp}`);
+    }
+    
     // Si está en modo demo, usar datos de prueba
     if (isDemoMode()) {
       console.log('🔧 Modo Demo: Usando datos de ejemplo con simulación de carga progresiva');
@@ -172,7 +180,11 @@ export async function GET() {
             
             // Usar la nueva función progresiva optimizada (no esperar pricing check)
             const dynamoStartTime = Date.now();
-            console.log(`[${streamInitTimestamp}] ⚡ Llamando getUsageRecords en ${dynamoStartTime - streamStartTime}ms desde GET`);
+            if (sinceTimestamp) {
+              console.log(`[${streamInitTimestamp}] ⚡ Llamando getUsageRecords (INCREMENTAL desde ${sinceTimestamp}) en ${dynamoStartTime - streamStartTime}ms desde GET`);
+            } else {
+              console.log(`[${streamInitTimestamp}] ⚡ Llamando getUsageRecords (COMPLETA) en ${dynamoStartTime - streamStartTime}ms desde GET`);
+            }
             await getUsageRecords(async (records, progress, isComplete, totalExpected) => {
               const callbackStart = Date.now();
               const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
@@ -253,7 +265,7 @@ export async function GET() {
                 console.log(`[${timestamp}] ✅ Carga progresiva optimizada completada`);
                 safeClose();
               }
-            });
+            }, sinceTimestamp);
             
           } catch (error) {
             console.error('❌ Error en carga progresiva:', error);

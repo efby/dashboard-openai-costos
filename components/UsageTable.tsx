@@ -37,9 +37,9 @@ export default function UsageTable({ records }: UsageTableProps) {
   const [filterCritical, setFilterCritical] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedRecord, setSelectedRecord] = useState<OpenAIUsage | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const itemsPerPage = 10;
 
   // Función para abrir el modal
   const openModal = (record: OpenAIUsage) => {
@@ -579,29 +579,50 @@ export default function UsageTable({ records }: UsageTableProps) {
       </div>
 
       {/* Paginación */}
-      <div className="flex items-center justify-between mt-4">
-        <p className="text-sm text-gray-700 dark:text-gray-300">
-          Mostrando <span className="font-medium">{startIndex + 1}</span> a{' '}
-          <span className="font-medium">
-            {Math.min(startIndex + itemsPerPage, sortedRecords.length)}
-          </span>{' '}
-          de <span className="font-medium">{sortedRecords.length}</span> resultados
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Mostrando <span className="font-medium">{startIndex + 1}</span> a{' '}
+            <span className="font-medium">
+              {Math.min(startIndex + itemsPerPage, sortedRecords.length)}
+            </span>{' '}
+            de <span className="font-medium">{sortedRecords.length}</span> resultados
+          </p>
+          <div className="flex items-center gap-2">
+            <label htmlFor="itemsPerPage" className="text-sm text-gray-700 dark:text-gray-300">
+              Por página:
+            </label>
+            <select
+              id="itemsPerPage"
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1); // Reset a la primera página
+              }}
+              className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             Anterior
           </button>
-          <span className="px-3 py-2 text-sm">
+          <span className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
             Página {currentPage} de {totalPages}
           </span>
           <button
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             Siguiente
           </button>

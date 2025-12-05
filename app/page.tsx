@@ -11,6 +11,7 @@ import TemporalAnalysisChart from '@/components/TemporalAnalysisChart';
 import UsageTable from '@/components/UsageTable';
 import { DashboardStats, OpenAIUsage } from '@/types/openai-usage';
 import { formatCost, formatNumber } from '@/lib/openai-pricing';
+import { calculateDashboardStats } from '@/lib/stats';
 import { subDays, parseISO } from 'date-fns';
 import { exportToCSV, exportToTextReport, downloadFile, generateExportSummary } from '@/lib/export-utils';
 
@@ -18,13 +19,14 @@ export default function Home() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [records, setRecords] = useState<OpenAIUsage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isIncrementalLoading, setIsIncrementalLoading] = useState(false); // Para carga incremental sin skeleton
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   
   // Auto-refresh configuration
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(30000); // 30 segundos
+  const [refreshInterval, setRefreshInterval] = useState(300000); // 5 minutos
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   
   // Date filters
@@ -38,9 +40,30 @@ export default function Home() {
   // Ref para evitar procesar el mismo chunk dos veces (React StrictMode en desarrollo)
   const processedChunksRef = useRef<Set<string>>(new Set());
   const isStreamingRef = useRef<boolean>(false);
+  const loadingRef = useRef<boolean>(false); // Ref para verificar loading sin dependencias
   const chunkCounterRef = useRef<number>(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const loggedChunksRef = useRef<Set<string>>(new Set()); // Para evitar logs duplicados
+  
+  // Mantener loadingRef sincronizado con loading state
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+  
+  // Función de emergencia para resetear todos los flags si se quedan atascados
+  const resetLoadingState = useCallback(() => {
+    console.log('🔧 RESET MANUAL de estados de carga');
+    setLoading(false);
+    setIsIncrementalLoading(false);
+    loadingRef.current = false;
+    isStreamingRef.current = false;
+    processedChunksRef.current.clear();
+    loggedChunksRef.current.clear();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
 
   // Memoized filtered records based on date range
   const filteredRecords = useMemo(() => 
@@ -51,7 +74,19 @@ export default function Home() {
   );
 
   // Memoized fetch function with progressive loading
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceFullReload = false) => {
+    // 🔒 BLOQUEO PRIMARIO: Verificar estado de carga usando ref
+    if (loadingRef.current || isStreamingRef.current) {
+      console.log('⚠️ Ya hay una carga en progreso, petición bloqueada', {
+        loadingRef: loadingRef.current,
+        isStreamingRef: isStreamingRef.current,
+        loadingState: loading
+      });
+      return;
+    }
+    
+    console.log('✅ Iniciando carga...', { forceFullReload, loading: loadingRef.current, streaming: isStreamingRef.current });
+    
     // Cancelar stream anterior si existe y resetear flags
     if (abortControllerRef.current) {
       console.log('🛑 Cancelando stream anterior...');
@@ -63,7 +98,7 @@ export default function Home() {
       abortControllerRef.current = null;
     }
     
-    // Evitar múltiples streams simultáneos (verificación atómica)
+    // Evitar múltiples streams simultáneos (verificación atómica doble)
     if (isStreamingRef.current) {
       console.log('⚠️ Stream ya en progreso, ignorando nueva petición');
       return;
@@ -91,17 +126,64 @@ export default function Home() {
         }
       }, 5 * 60 * 1000); // 5 minutos
       
-      setLoading(true);
       setLoadingProgress(0);
       setError(null);
       
-      // Limpiar datos anteriores
-      setStats(null);
-      setRecords([]);
+      // Obtener el último timestamp para carga incremental
+      // Prioridad: 1) localStorage, 2) último registro en memoria
+      let lastTimestamp: string | null = null;
+      let isIncremental = false;
       
-      // Usar la nueva API de streaming
+      if (forceFullReload) {
+        // Recarga completa: limpiar todo y mostrar skeleton
+        console.log('🔄 Recarga completa - limpiando datos...');
+        setLoading(true);
+        loadingRef.current = true;
+        setIsIncrementalLoading(false);
+        setStats(null);
+        setRecords([]);
+        lastTimestamp = null;
+        isIncremental = false;
+      } else {
+        // Carga incremental: intentar obtener timestamp
+        lastTimestamp = localStorage.getItem('lastRecordTimestamp');
+        
+        // Si no hay en localStorage pero hay registros en memoria, usar el más reciente
+        if (!lastTimestamp && records.length > 0) {
+          const latestInMemory = records.reduce((latest, record) => {
+            return record.timestamp > latest.timestamp ? record : latest;
+          });
+          lastTimestamp = latestInMemory.timestamp;
+          console.log(`🔄 Carga incremental: Usando timestamp del último registro en memoria (${lastTimestamp})`);
+          isIncremental = true;
+        } else if (lastTimestamp) {
+          console.log(`🔄 Carga incremental: Solo registros posteriores a ${lastTimestamp}`);
+          isIncremental = true;
+        } else {
+          console.log('🔄 Primera carga sin datos previos - carga completa');
+          isIncremental = false;
+        }
+        
+        // Para carga incremental, solo activar el indicador sin skeleton
+        if (isIncremental) {
+          setIsIncrementalLoading(true);
+          // NO activar loading para evitar el skeleton/blink
+          loadingRef.current = true; // Mantener flag interno para bloqueo
+        } else {
+          // Si no hay datos previos, es como una carga completa
+          setLoading(true);
+          loadingRef.current = true;
+          setIsIncrementalLoading(false);
+        }
+      }
+      
+      // Usar la nueva API de streaming con parámetro since si es incremental
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/usage-stream?t=${timestamp}`, {
+      const url = lastTimestamp 
+        ? `/api/usage-stream?t=${timestamp}&since=${encodeURIComponent(lastTimestamp)}`
+        : `/api/usage-stream?t=${timestamp}`;
+      
+      const response = await fetch(url, {
         method: 'GET',
         cache: 'no-store',
         signal: abortController.signal, // Permitir cancelación
@@ -154,6 +236,24 @@ export default function Home() {
           processedChunksRef.current.clear();
           loggedChunksRef.current.clear();
           abortControllerRef.current = null; // Limpiar referencia
+          
+          // Asegurar que loading se desactiva al terminar
+          setLoading(false);
+          setIsIncrementalLoading(false);
+          loadingRef.current = false;
+          
+          // Si es carga incremental y no se recalcularon stats, hacerlo ahora
+          if (lastTimestamp && !forceFullReload) {
+            setRecords(currentRecords => {
+              if (currentRecords.length > 0) {
+                console.log(`📊 Recalculando stats finales con ${currentRecords.length} registros...`);
+                const newStats = calculateDashboardStats(currentRecords);
+                setStats(newStats);
+              }
+              return currentRecords;
+            });
+          }
+          
           break;
         }
         
@@ -198,8 +298,9 @@ export default function Home() {
               
               // ⚡ PROCESAR CHUNK INICIAL INMEDIATAMENTE (incluso si stats es null)
               if (data.data && !data.progressOnly) {
-                // Actualizar stats (puede ser null en chunk inicial)
-                if (data.data.stats) {
+                // Actualizar stats SOLO si vienen y NO es incremental o es recarga completa
+                // En carga incremental, los stats se recalcularán al final con todos los registros
+                if (data.data.stats && (forceFullReload || !lastTimestamp)) {
                   setStats(data.data.stats);
                 }
                 setIsDemoMode(data.demo || false);
@@ -210,8 +311,10 @@ export default function Home() {
                 }
                 
                 // ⚡ MOSTRAR DATOS INMEDIATAMENTE cuando llegue el primer chunk (incluso sin datos)
-                if (data.progress >= 0) {
-                  setLoading(false); // Quitar skeleton loading inmediatamente
+                // PERO mantener loading=true en cargas incrementales hasta terminar
+                if (data.progress >= 0 && (forceFullReload || !lastTimestamp) && !isIncremental) {
+                  setLoading(false); // Quitar skeleton loading inmediatamente solo en carga completa
+                  loadingRef.current = false;
                 }
                 
                 // Acumular nuevos registros incrementalmente (evitando duplicados)
@@ -259,7 +362,34 @@ export default function Home() {
               if (data.isComplete) {
                 if (timeoutId) clearTimeout(timeoutId);
                 setLoading(false);
+                setIsIncrementalLoading(false);
+                loadingRef.current = false;
                 setLastRefresh(new Date());
+                
+                // 📊 RECALCULAR STATS en carga incremental (si no vinieron del servidor)
+                if (lastTimestamp && !forceFullReload) {
+                  setRecords(currentRecords => {
+                    if (currentRecords.length > 0) {
+                      console.log(`📊 Recalculando stats con ${currentRecords.length} registros totales...`);
+                      const newStats = calculateDashboardStats(currentRecords);
+                      setStats(newStats);
+                    }
+                    return currentRecords;
+                  });
+                }
+                
+                // Guardar el timestamp del registro más reciente para próxima carga incremental
+                setRecords(currentRecords => {
+                  if (currentRecords.length > 0) {
+                    // Encontrar el timestamp más reciente
+                    const latestRecord = currentRecords.reduce((latest, record) => {
+                      return record.timestamp > latest.timestamp ? record : latest;
+                    });
+                    localStorage.setItem('lastRecordTimestamp', latestRecord.timestamp);
+                    console.log(`💾 Guardado último timestamp: ${latestRecord.timestamp} (${currentRecords.length} registros totales)`);
+                  }
+                  return currentRecords;
+                });
                 isStreamingRef.current = false; // Permitir nuevo stream
                 processedChunksRef.current.clear(); // Limpiar chunks procesados
                 loggedChunksRef.current.clear(); // Limpiar logs procesados
@@ -288,6 +418,8 @@ export default function Home() {
       if (timeoutId) clearTimeout(timeoutId);
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setLoading(false);
+      setIsIncrementalLoading(false);
+      loadingRef.current = false; // Resetear ref en caso de error
       isStreamingRef.current = false; // Resetear flag en caso de error
       processedChunksRef.current.clear();
       loggedChunksRef.current.clear();
@@ -295,18 +427,32 @@ export default function Home() {
     }
   }, []);
 
-  // Auto-refresh effect
+  // Auto-refresh effect (carga incremental)
   useEffect(() => {
     if (!autoRefresh) return;
     
-    const interval = setInterval(fetchData, refreshInterval);
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refresh: Cargando nuevos registros...');
+      fetchData(false); // false = carga incremental (solo nuevos)
+    }, refreshInterval);
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, fetchData]);
 
-  // Initial data fetch
+  // Initial data fetch (siempre carga completa la primera vez)
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    // Verificar y limpiar flags atascados al montar
+    if (loadingRef.current || isStreamingRef.current) {
+      console.warn('⚠️ Flags de carga atascados detectados al montar, reseteando...');
+      resetLoadingState();
+    }
+    
+    // Iniciar carga después de un pequeño delay para asegurar que todo esté limpio
+    const timer = setTimeout(() => {
+      fetchData(true); // true = forzar carga completa
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [fetchData, resetLoadingState]);
 
 
   // Export functions
@@ -351,7 +497,8 @@ export default function Home() {
     </div>
   );
 
-  if (loading) {
+  // Mostrar skeleton solo en carga completa inicial, no en incremental
+  if (loading && !isIncrementalLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <header className="bg-white dark:bg-gray-800 shadow">
@@ -408,62 +555,68 @@ export default function Home() {
               Asegúrate de que las variables de entorno estén configuradas correctamente en el archivo <code className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">.env.local</code>
             </p>
           </div>
-          <button
-            onClick={fetchData}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Reintentar
-          </button>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => {
+                resetLoadingState();
+                setTimeout(() => fetchData(false), 100);
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={resetLoadingState}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              title="Resetear estado de carga"
+            >
+              Reset
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Si no hay stats pero hay registros, calcularlos
+  if (!stats && records.length > 0) {
+    const calculatedStats = calculateDashboardStats(records);
+    setStats(calculatedStats);
+    return null;
+  }
+  
+  // Si no hay stats ni registros, esperar
   if (!stats) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-16">
 
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow relative z-[100]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Header - Fijo en la parte superior */}
+      <header className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow z-[100]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                   Dashboard de Costos OpenAI
                 </h1>
                 {isDemoMode && (
-                  <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full text-xs font-medium">
-                    MODO DEMO
+                  <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full text-[10px] font-medium">
+                    DEMO
                   </span>
                 )}
                 {autoRefresh && (
-                  <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs font-medium flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    AUTO-REFRESH
+                  <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-[10px] font-medium flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    AUTO
                   </span>
                 )}
-              </div>
-              <div className="mt-1 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                <span>
-                  {isDemoMode 
-                    ? 'Mostrando datos de ejemplo - Configura DynamoDB para datos reales'
-                    : 'Análisis de uso y costos de la API de OpenAI'
-                  }
-                </span>
-                {lastRefresh && (!loading && loadingProgress === 100) && (
-                  <span className="text-xs">
-                    Última actualización: {lastRefresh.toLocaleTimeString()}
-                  </span>
-                )}
-                {!(!loading && loadingProgress === 100) && loadingProgress > 0 && (
-                  <span className="text-xs flex items-center gap-3 text-blue-600 dark:text-blue-400 transition-all duration-300 relative z-[101]">
-                    {/* Indicador circular con progreso */}
-                    <div className="relative w-4 h-4">
-                      <svg className="w-4 h-4 transform -rotate-90" viewBox="0 0 24 24">
+                {!(!loading && !isIncrementalLoading && loadingProgress === 100) && loadingProgress > 0 && (
+                  <span className="text-[10px] flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <div className="relative w-3 h-3">
+                      <svg className="w-3 h-3 transform -rotate-90" viewBox="0 0 24 24">
                         <circle
                           cx="12"
                           cy="12"
@@ -487,34 +640,54 @@ export default function Home() {
                         />
                       </svg>
                     </div>
-                    <span className="transition-all duration-300 flex items-center gap-2 relative z-[101]">
-                      <span>Cargando datos...</span>
-                      <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">
-                        {loadingProgress}%
-                      </span>
+                    <span className="font-mono font-semibold">
+                      {loadingProgress}%
                     </span>
                   </span>
                 )}
               </div>
+              <div className="mt-0.5 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-500">
+                {lastRefresh && (!loading && !isIncrementalLoading && loadingProgress === 100) && (
+                  <span>
+                    ⟳ {lastRefresh.toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="px-3 py-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                onClick={(e) => {
+                  if (loading || isIncrementalLoading) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  setShowSettings(!showSettings);
+                }}
+                disabled={loading || isIncrementalLoading}
+                className="px-2 py-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400"
                 title="Configuración"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
               <button
-                onClick={fetchData}
-                disabled={loading}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                onClick={(e) => {
+                  if (loading || isIncrementalLoading) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  fetchData(false);
+                }}
+                disabled={loading || isIncrementalLoading}
+                className="px-3 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex items-center gap-1.5 text-sm"
+                title="Actualizar datos (carga incremental)"
               >
                 <svg
-                  className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
+                  className={`w-4 h-4 ${(loading || isIncrementalLoading) ? 'animate-spin' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -526,16 +699,16 @@ export default function Home() {
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-                {loading ? 'Actualizando...' : 'Actualizar'}
+                <span className="hidden sm:inline">{(loading || isIncrementalLoading) ? 'Actualizando...' : 'Actualizar'}</span>
               </button>
             </div>
           </div>
         </div>
         
         {/* Progress Bar */}
-        {(loading || !(!loading && loadingProgress === 100)) && (
+        {(loading || isIncrementalLoading || !(!loading && !isIncrementalLoading && loadingProgress === 100)) && (
           <div className="relative">
-            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gray-200 dark:bg-gray-700 overflow-hidden rounded-full">
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 overflow-hidden">
               {/* Barra de progreso principal con crecimiento lineal suave */}
               <div 
                 className="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 transition-all duration-500 ease-out"

@@ -65,11 +65,14 @@ function validateNoDuplicates(records: OpenAIUsage[], source: string): { isValid
 
 
 /**
- * Obtiene todos los registros de uso de OpenAI desde DynamoDB
+ * Obtiene registros de uso de OpenAI desde DynamoDB
  * Usa parallel scans optimizados para máxima velocidad con callback progresivo
+ * @param onProgress - Callback para reportar progreso
+ * @param sinceTimestamp - (Opcional) Solo traer registros posteriores a este timestamp
  */
 export async function getUsageRecords(
-  onProgress: (records: OpenAIUsage[], progress: number, isComplete: boolean, totalExpected: number) => void
+  onProgress: (records: OpenAIUsage[], progress: number, isComplete: boolean, totalExpected: number) => void,
+  sinceTimestamp?: string
 ): Promise<OpenAIUsage[]> {
   const client = getClient();
   const tableName = process.env.DYNAMODB_TABLE_NAME;
@@ -89,7 +92,12 @@ export async function getUsageRecords(
     };
 
     // NO hacer count separado - usar los datos reales conforme van llegando
-    logWithTime('🚀 Iniciando carga progresiva SIN count separado (más eficiente)...');
+    const isIncremental = !!sinceTimestamp;
+    if (isIncremental) {
+      logWithTime(`🔄 Carga INCREMENTAL: Solo registros posteriores a ${sinceTimestamp}`);
+    } else {
+      logWithTime('🚀 Iniciando carga COMPLETA (primera vez)...');
+    }
     
     // ⚡ CALLBACK INMEDIATO: Mostrar estado inicial
     const startTime = Date.now();
@@ -117,13 +125,27 @@ export async function getUsageRecords(
         const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
         console.log(`[${timestamp}] 📊 Segmento ${segment + 1}/${totalSegments} - Scan #${segmentScanCount}`);
         
-        const command: ScanCommand = new ScanCommand({
+        // Construir comando con filtro opcional
+        const scanParams: any = {
           TableName: tableName,
           ExclusiveStartKey: segmentLastKey,
           // NO especificamos Limit - DynamoDB devolverá el máximo posible (hasta 1MB)
           Segment: segment,
           TotalSegments: totalSegments
-        });
+        };
+        
+        // Si es carga incremental, filtrar por timestamp
+        if (sinceTimestamp) {
+          scanParams.FilterExpression = '#ts > :since';
+          scanParams.ExpressionAttributeNames = {
+            '#ts': 'timestamp'
+          };
+          scanParams.ExpressionAttributeValues = {
+            ':since': sinceTimestamp
+          };
+        }
+        
+        const command: ScanCommand = new ScanCommand(scanParams);
         
         const response: ScanCommandOutput = await client.send(command);
         const scanTime = Date.now() - scanStartTime;
