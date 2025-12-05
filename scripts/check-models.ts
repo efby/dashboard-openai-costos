@@ -31,25 +31,34 @@ function normalizeTokens(usage: any): { input: number; output: number; total: nu
   };
 }
 
-// Precios ACTUALIZADOS de OpenAI - Diciembre 2024 ✅
+// Precios ACTUALIZADOS de OpenAI - Diciembre 2025 ✅
 // ⚠️ IMPORTANTE: Mantener sincronizado con lib/openai-pricing.ts
 const MODEL_PRICING: Record<string, [number, number]> = {
-  // GPT-4o family - ✅ Verificado Dic 2024
+  // GPT-5 family - ✅ OFICIAL Dic 2025
+  'gpt-5': [1.25, 10.0],
+  'gpt-5-mini': [0.25, 2.0],
+  'gpt-5-nano': [0.05, 0.40],
+  'gpt-5-pro': [15.0, 120.0],
+  'gpt-5.1': [1.25, 10.0],
+  'gpt-5.1-2025-11-13': [1.25, 10.0],
+  
+  // GPT-4.1 family - Legacy pero en uso
+  'gpt-4.1': [3.0, 12.0],
+  'gpt-4.1-mini': [0.40, 1.60],
+  'gpt-4.1-nano': [0.10, 0.40],
+  'gpt-4.1-2025-04-14': [3.0, 12.0],
+  'gpt-4.1-mini-2025-04-14': [0.40, 1.60],
+  'gpt-4.1-nano-2025-04-14': [0.10, 0.40],
+  
+  // GPT-4o family - Legacy
   'gpt-4o': [5.0, 15.0],
   'gpt-4o-mini': [0.15, 0.60],
   'gpt-4o-2024-11-20': [5.0, 15.0],
   'gpt-4o-2024-08-06': [5.0, 15.0],
   'gpt-4o-2024-05-13': [5.0, 15.0],
+  'gpt-4o-2025-01-01': [5.0, 15.0],
   'gpt-4o-mini-2024-07-18': [0.15, 0.60],
   'chatgpt-4o-latest': [5.0, 15.0],
-  
-  // GPT-4.1 family - ✅ Verificado Dic 2024
-  'gpt-4.1': [2.0, 8.0],
-  'gpt-4.1-mini': [0.40, 1.60],
-  'gpt-4.1-nano': [0.10, 0.40],
-  'gpt-4.1-2025-04-14': [2.0, 8.0],
-  'gpt-4.1-mini-2025-04-14': [0.40, 1.60],
-  'gpt-4.1-nano-2025-04-14': [0.10, 0.40],
   
   // GPT-4 Turbo (legacy)
   'gpt-4-turbo': [10.0, 30.0],
@@ -71,7 +80,7 @@ const MODEL_PRICING: Record<string, [number, number]> = {
   'gpt-3.5-turbo-16k': [3.0, 4.0],
   'gpt-3.5-turbo-instruct': [1.50, 2.0],
   
-  // O-series - ✅ Verificado Dic 2024
+  // O-series - Legacy
   'o1': [15.0, 60.0],
   'o1-preview': [15.0, 60.0],
   'o1-preview-2024-09-12': [15.0, 60.0],
@@ -80,11 +89,6 @@ const MODEL_PRICING: Record<string, [number, number]> = {
   'o3': [10.0, 40.0],
   'o3-mini': [3.0, 12.0],
   'o4-mini': [1.10, 4.40],
-  
-  // GPT-5 family - 🔮 Predicción
-  'gpt-5': [4.0, 16.0],
-  'gpt-5.1': [3.5, 14.0],
-  'gpt-5.1-2025-11-13': [3.5, 14.0],
 };
 
 async function checkModels() {
