@@ -10,8 +10,9 @@ interface TemporalAnalysisChartProps {
 }
 
 export default function TemporalAnalysisChart({ dailyCosts, requestsByDay }: TemporalAnalysisChartProps) {
-  // Datos por día de la semana
-  const dayOfWeekData = dailyCosts.reduce((acc, item) => {
+  // Datos por día de la semana (solo últimos 7 días)
+  const last7Days = dailyCosts.slice(-7);
+  const dayOfWeekData = last7Days.reduce((acc, item) => {
     const dayName = format(parseISO(item.date), 'EEEE', { locale: es });
     if (!acc[dayName]) {
       acc[dayName] = { cost: 0, requests: 0 };
@@ -43,22 +44,22 @@ export default function TemporalAnalysisChart({ dailyCosts, requestsByDay }: Tem
       consultas: requestsByDay[item.date] || 0,
     }));
 
-  // Estadísticas
-  const totalRequests = Object.values(requestsByDay).reduce((sum, val) => sum + val, 0);
-  const avgRequestsPerDay = totalRequests / dailyCosts.length;
-  const peakDay = dailyCosts.reduce((max, item) => 
+  // Estadísticas (últimos 7 días)
+  const totalRequests7Days = last7Days.reduce((sum, item) => sum + (requestsByDay[item.date] || 0), 0);
+  const avgRequestsPerDay = totalRequests7Days / Math.min(last7Days.length, 7);
+  const peakDay = last7Days.reduce((max, item) => 
     item.cost > max.cost ? item : max
-  , dailyCosts[0] || { date: '', cost: 0 });
+  , last7Days[0] || { date: '', cost: 0 });
 
   return (
     <div className="space-y-6">
       {/* Estadísticas generales */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total de Días</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{dailyCosts.length}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Últimos 7 Días</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{last7Days.length}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {dailyCosts.length > 0 ? `${format(parseISO(dailyCosts[0].date), 'dd MMM', { locale: es })} - ${format(parseISO(dailyCosts[dailyCosts.length - 1].date), 'dd MMM', { locale: es })}` : '-'}
+            {last7Days.length > 0 ? `${format(parseISO(last7Days[0].date), 'dd MMM', { locale: es })} - ${format(parseISO(last7Days[last7Days.length - 1].date), 'dd MMM', { locale: es })}` : '-'}
           </p>
         </div>
 
@@ -71,12 +72,12 @@ export default function TemporalAnalysisChart({ dailyCosts, requestsByDay }: Tem
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Día Pico</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Día Pico (7 días)</p>
           <p className="text-2xl font-bold text-blue-600">
             ${peakDay.cost.toFixed(2)}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {peakDay.date ? format(parseISO(peakDay.date), 'dd MMM yyyy', { locale: es }) : '-'}
+            {peakDay.date ? format(parseISO(peakDay.date), 'dd MMM', { locale: es }) : '-'}
           </p>
         </div>
       </div>
@@ -84,7 +85,7 @@ export default function TemporalAnalysisChart({ dailyCosts, requestsByDay }: Tem
       {/* Gráfico por día de la semana */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Análisis por Día de la Semana
+          Análisis por Día de la Semana (Últimos 7 Días)
         </h3>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={weekdayChartData}>
