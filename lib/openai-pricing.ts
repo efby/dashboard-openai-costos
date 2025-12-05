@@ -65,16 +65,6 @@ const MODEL_PRICING: Record<string, [number, number]> = {
   'chatgpt-4o-latest': [5.0, 15.0],         // Alias dinámico (en uso real)
   
   // ═══════════════════════════════════════════════════════════════
-  // GPT-4.1 FAMILY (1M token context, optimized for agents)
-  // ═══════════════════════════════════════════════════════════════
-  'gpt-4.1': [2.0, 8.0],                    // ✅ Verificado Dic 2024 - 1M context
-  'gpt-4.1-mini': [0.40, 1.60],             // ✅ Verificado Dic 2024 - Versión ligera
-  'gpt-4.1-nano': [0.10, 0.40],             // ✅ Verificado Dic 2024 - Ultra eficiente
-  'gpt-4.1-2025-04-14': [2.0, 8.0],         // Snapshot específico
-  'gpt-4.1-mini-2025-04-14': [0.40, 1.60],  // Snapshot mini
-  'gpt-4.1-nano-2025-04-14': [0.10, 0.40],  // Snapshot nano
-  
-  // ═══════════════════════════════════════════════════════════════
   // GPT-4 TURBO FAMILY (Legacy, más caros)
   // ═══════════════════════════════════════════════════════════════
   'gpt-4-turbo': [10.0, 30.0],

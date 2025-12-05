@@ -123,7 +123,7 @@ async function checkModels() {
     
     do {
       pageCount++;
-      const command = new ScanCommand({
+      const command: ScanCommand = new ScanCommand({
         TableName: tableName,
         ExclusiveStartKey: lastEvaluatedKey,
       });
