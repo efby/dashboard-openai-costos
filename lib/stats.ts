@@ -7,6 +7,28 @@ const dateFormatCache = new Map<string, string>();
 const costCache = new Map<string, number>();
 
 /**
+ * Normaliza los tokens de la estructura usage para soportar ambos formatos:
+ * - Nuevo: input_tokens / output_tokens
+ * - Antiguo: prompt_tokens / completion_tokens
+ */
+function normalizeTokens(usage: any): { input: number; output: number; total: number } {
+  if (!usage) {
+    return { input: 0, output: 0, total: 0 };
+  }
+  
+  // Intentar con estructura nueva primero
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0;
+  const totalTokens = usage.total_tokens ?? (inputTokens + outputTokens);
+  
+  return {
+    input: inputTokens,
+    output: outputTokens,
+    total: totalTokens
+  };
+}
+
+/**
  * Formatea una fecha con memoización
  */
 function formatDateCached(timestamp: string): string {
@@ -161,17 +183,20 @@ export function calculateDashboardStats(records: OpenAIUsage[]): DashboardStats 
   const requestsByDay: Record<string, number> = {};
   
   records.forEach(record => {
+    // Normalizar tokens para soportar ambas estructuras
+    const tokens = normalizeTokens(record.usage);
+    
     // Usar función memoizada para calcular costo
     const recordCost = calculateCostCached(
       record.modelo_ai,
-      record.usage?.input_tokens || 0,
-      record.usage?.output_tokens || 0
+      tokens.input,
+      tokens.output
     );
     
     totalCost += recordCost;
-    totalInputTokens += record.usage?.input_tokens || 0;
-    totalOutputTokens += record.usage?.output_tokens || 0;
-    totalTokens += record.usage?.total_tokens || 0;
+    totalInputTokens += tokens.input;
+    totalOutputTokens += tokens.output;
+    totalTokens += tokens.total;
     
     // Por modelo
     const modelKey = record.modelo_ai || 'unknown';

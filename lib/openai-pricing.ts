@@ -31,6 +31,7 @@ const MODEL_PRICING: Record<string, [number, number]> = {
   'gpt-4o-2024-08-06': [2.50, 10.0],
   'gpt-4o-2024-05-13': [5.0, 15.0],
   'gpt-4o-mini-2024-07-18': [0.15, 0.60],
+  'chatgpt-4o-latest': [2.50, 10.0], // Alias de gpt-4o
   
   // GPT-4 Turbo models
   'gpt-4-turbo': [10.0, 30.0],

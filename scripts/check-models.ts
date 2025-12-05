@@ -11,6 +11,26 @@ import { resolve } from 'path';
 // Cargar variables de entorno
 config({ path: resolve(process.cwd(), '.env.local') });
 
+/**
+ * Normaliza los tokens de la estructura usage para soportar ambos formatos
+ */
+function normalizeTokens(usage: any): { input: number; output: number; total: number } {
+  if (!usage) {
+    return { input: 0, output: 0, total: 0 };
+  }
+  
+  // Intentar con estructura nueva primero, luego antigua
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0;
+  const totalTokens = usage.total_tokens ?? (inputTokens + outputTokens);
+  
+  return {
+    input: inputTokens,
+    output: outputTokens,
+    total: totalTokens
+  };
+}
+
 // Precios de OpenAI por millón de tokens (copiado de lib/openai-pricing.ts)
 const MODEL_PRICING: Record<string, [number, number]> = {
   // GPT-4o models
@@ -20,6 +40,7 @@ const MODEL_PRICING: Record<string, [number, number]> = {
   'gpt-4o-2024-08-06': [2.50, 10.0],
   'gpt-4o-2024-05-13': [5.0, 15.0],
   'gpt-4o-mini-2024-07-18': [0.15, 0.60],
+  'chatgpt-4o-latest': [2.50, 10.0],
   
   // GPT-4 Turbo models
   'gpt-4-turbo': [10.0, 30.0],
@@ -78,16 +99,29 @@ async function checkModels() {
   const docClient = DynamoDBDocumentClient.from(client);
 
   try {
-    // Obtener los últimos 50 registros
-    console.log('📥 Obteniendo últimos registros...\n');
+    // Obtener TODOS los registros con paginación
+    console.log('📥 Obteniendo TODOS los registros (puede tomar un momento)...\n');
     
-    const command = new ScanCommand({
-      TableName: tableName,
-      Limit: 50, // Solo los últimos 50 para análisis rápido
-    });
+    const items: any[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+    let pageCount = 0;
+    
+    do {
+      pageCount++;
+      const command = new ScanCommand({
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey,
+      });
 
-    const response = await docClient.send(command);
-    const items = response.Items || [];
+      const response = await docClient.send(command);
+      
+      if (response.Items && response.Items.length > 0) {
+        items.push(...response.Items);
+        console.log(`   Página ${pageCount}: +${response.Items.length} registros (total: ${items.length})`);
+      }
+      
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
 
     if (items.length === 0) {
       console.log('⚠️ No se encontraron registros en la tabla');
@@ -116,28 +150,11 @@ async function checkModels() {
         return;
       }
       
-      const inputTokens = record.usage?.input_tokens;
-      const outputTokens = record.usage?.output_tokens;
-      const totalTokens = record.usage?.total_tokens;
-      
-      // Detectar null/undefined en tokens
-      if (inputTokens === null || inputTokens === undefined || 
-          outputTokens === null || outputTokens === undefined ||
-          totalTokens === null || totalTokens === undefined) {
-        recordsWithNullTokens++;
-        problemRecords.push({
-          id: record.id,
-          modelo: record.modelo_ai,
-          candidato: record.nombre || record.nombre_candidato,
-          timestamp: record.timestamp,
-          problem: 'Tokens null/undefined',
-          usage: record.usage
-        });
-        return;
-      }
+      // Normalizar tokens (soporta ambas estructuras)
+      const tokens = normalizeTokens(record.usage);
       
       // Detectar todos los tokens en 0
-      if (inputTokens === 0 && outputTokens === 0 && totalTokens === 0) {
+      if (tokens.input === 0 && tokens.output === 0 && tokens.total === 0) {
         recordsWithZeroTokens++;
         problemRecords.push({
           id: record.id,
@@ -156,7 +173,6 @@ async function checkModels() {
     console.log(`\n📊 Resumen de ${items.length} registros:`);
     console.log(`   ✓ Registros válidos: ${items.length - problemRecords.length}`);
     console.log(`   ✗ Registros sin estructura usage: ${recordsWithoutUsage}`);
-    console.log(`   ✗ Registros con tokens null/undefined: ${recordsWithNullTokens}`);
     console.log(`   ⚠️ Registros con todos los tokens en 0: ${recordsWithZeroTokens}`);
     
     if (problemRecords.length > 0) {
@@ -258,13 +274,12 @@ async function checkModels() {
           // Mostrar datos de ejemplo
           const sample = stats.sampleRecord;
           if (sample.usage) {
-            const inputTokens = sample.usage.input_tokens || 0;
-            const outputTokens = sample.usage.output_tokens || 0;
-            const inputCost = (inputTokens / 1_000_000) * pricing[0];
-            const outputCost = (outputTokens / 1_000_000) * pricing[1];
+            const tokens = normalizeTokens(sample.usage);
+            const inputCost = (tokens.input / 1_000_000) * pricing[0];
+            const outputCost = (tokens.output / 1_000_000) * pricing[1];
             const totalCost = inputCost + outputCost;
             
-            console.log(`     - Ejemplo: ${inputTokens} in + ${outputTokens} out = $${totalCost.toFixed(6)}`);
+            console.log(`     - Ejemplo: ${tokens.input} in + ${tokens.output} out = $${totalCost.toFixed(6)}`);
           }
           console.log();
         });
@@ -289,7 +304,8 @@ async function checkModels() {
           console.log(`       • Timestamp: ${sample.timestamp}`);
           
           if (sample.usage) {
-            console.log(`       • Tokens: ${sample.usage.input_tokens || 0} in, ${sample.usage.output_tokens || 0} out`);
+            const tokens = normalizeTokens(sample.usage);
+            console.log(`       • Tokens: ${tokens.input} in, ${tokens.output} out`);
           } else {
             console.log(`       • Tokens: NO DISPONIBLE (sin estructura usage)`);
           }
@@ -308,6 +324,106 @@ async function checkModels() {
       const totalAffected = modelsWithoutPricing.reduce((sum, [, stats]) => sum + stats.count, 0);
       console.log(`\n   Total de registros afectados: ${totalAffected} de ${items.length}`);
       console.log(`   Porcentaje afectado: ${((totalAffected / items.length) * 100).toFixed(1)}%`);
+    }
+
+    // Calcular estadísticas de costos
+    console.log('\n' + '═'.repeat(80));
+    console.log('ANÁLISIS DE COSTOS');
+    console.log('═'.repeat(80));
+    
+    let totalCostCalculated = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalRecordsWithCost = 0;
+    let recordsCantCalculate = 0;
+    const recordsWithIssues: any[] = [];
+    
+    items.forEach(record => {
+      // Validar que el registro pueda calcular costo
+      const modelo = record.modelo_ai;
+      const hasUsage = !!record.usage;
+      
+      if (!modelo || !hasUsage) {
+        recordsCantCalculate++;
+        recordsWithIssues.push({
+          id: record.id,
+          problema: !modelo ? 'Sin modelo' : 'Sin usage',
+          modelo: modelo || 'N/A',
+          candidato: record.nombre || record.nombre_candidato || 'N/A',
+          timestamp: record.timestamp || 'N/A'
+        });
+        return;
+      }
+      
+      // Normalizar tokens (soporta ambas estructuras)
+      const tokens = normalizeTokens(record.usage);
+      const inputTokens = tokens.input;
+      const outputTokens = tokens.output;
+      
+      // Buscar precio del modelo
+      let pricing: [number, number] | undefined = MODEL_PRICING[modelo];
+      if (!pricing) {
+        const modelKey = Object.keys(MODEL_PRICING).find(key => 
+          modelo.toLowerCase().startsWith(key.toLowerCase())
+        );
+        pricing = modelKey ? MODEL_PRICING[modelKey] : undefined;
+      }
+      
+      if (!pricing) {
+        recordsCantCalculate++;
+        recordsWithIssues.push({
+          id: record.id,
+          problema: 'Modelo sin precio',
+          modelo: modelo,
+          candidato: record.nombre || record.nombre_candidato || 'N/A',
+          timestamp: record.timestamp || 'N/A',
+          tokens: `${inputTokens} in + ${outputTokens} out`
+        });
+        return;
+      }
+      
+      // Calcular costo
+      const [inputPrice, outputPrice] = pricing;
+      const inputCost = (inputTokens / 1_000_000) * inputPrice;
+      const outputCost = (outputTokens / 1_000_000) * outputPrice;
+      const totalCost = inputCost + outputCost;
+      
+      totalCostCalculated += totalCost;
+      totalInputTokens += inputTokens;
+      totalOutputTokens += outputTokens;
+      totalRecordsWithCost++;
+    });
+    
+    console.log(`\n📊 Estadísticas generales:`);
+    console.log(`   Total registros: ${items.length}`);
+    console.log(`   Registros con costo calculado: ${totalRecordsWithCost}`);
+    console.log(`   Registros que NO pueden calcular: ${recordsCantCalculate}`);
+    console.log(`   Porcentaje calculable: ${((totalRecordsWithCost / items.length) * 100).toFixed(2)}%`);
+    
+    if (totalRecordsWithCost > 0) {
+      console.log(`\n💰 Totales calculados:`);
+      console.log(`   Costo total: $${totalCostCalculated.toFixed(4)}`);
+      console.log(`   Tokens entrada: ${totalInputTokens.toLocaleString()}`);
+      console.log(`   Tokens salida: ${totalOutputTokens.toLocaleString()}`);
+      console.log(`   Tokens totales: ${(totalInputTokens + totalOutputTokens).toLocaleString()}`);
+      console.log(`   Costo promedio por consulta: $${(totalCostCalculated / totalRecordsWithCost).toFixed(6)}`);
+    }
+    
+    if (recordsWithIssues.length > 0) {
+      console.log(`\n⚠️ REGISTROS QUE NO PUEDEN CALCULAR COSTO (primeros 20):`);
+      console.log('-'.repeat(80));
+      recordsWithIssues.slice(0, 20).forEach((record, index) => {
+        console.log(`\n${index + 1}. ${record.problema}`);
+        console.log(`   ID: ${record.id}`);
+        console.log(`   Modelo: ${record.modelo}`);
+        console.log(`   Candidato: ${record.candidato}`);
+        console.log(`   Timestamp: ${record.timestamp}`);
+        if (record.tokens) {
+          console.log(`   Tokens: ${record.tokens}`);
+        }
+      });
+      
+      console.log(`\n📝 Total de registros con problemas: ${recordsWithIssues.length}`);
     }
 
     console.log('\n' + '═'.repeat(80));

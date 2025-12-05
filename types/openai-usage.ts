@@ -13,14 +13,29 @@ export interface OpenAIUsage {
   input_promt?: string | Record<string, any> | Array<any>;           
   respuesta_busqueda?: string | Record<string, any> | Array<any>;    
   usage: {
-    input_tokens: number;
-    input_tokens_details: {
+    // Estructura nueva (preferida)
+    input_tokens?: number;
+    input_tokens_details?: {
       cached_tokens: number;
     };
-    output_tokens: number;
-    output_tokens_details: {
+    output_tokens?: number;
+    output_tokens_details?: {
       reasoning_tokens: number;
     };
+    // Estructura antigua (alternativa)
+    prompt_tokens?: number;
+    prompt_tokens_details?: {
+      cached_tokens?: number;
+      audio_tokens?: number;
+    };
+    completion_tokens?: number;
+    completion_tokens_details?: {
+      reasoning_tokens?: number;
+      audio_tokens?: number;
+      accepted_prediction_tokens?: number;
+      rejected_prediction_tokens?: number;
+    };
+    // Total (presente en ambas)
     total_tokens: number;
   };
 }
